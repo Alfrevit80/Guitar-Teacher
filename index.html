@@ -1633,15 +1633,21 @@ function add(cls,txt){const d=document.createElement('div');d.className='cm '+cl
 function keyForm(){const f=document.createElement('div');f.className='cm sys';
   f.innerHTML='Per far rispondere il maestro serve una chiave gratuita di Google Gemini. Vai su <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--blue)">aistudio.google.com/apikey</a>, accedi con il tuo account Google, tocca “Create API key”, copiala e incollala qui. Resta salvata solo su questo dispositivo.<div class="keyform" style="margin-top:8px"><input id="apiKey" type="password" placeholder="AIza…" aria-label="Chiave Gemini"><button class="btn small" id="apiSave" type="button">Salva chiave</button></div>';
   log.appendChild(f);log.hidden=false;$('chatToggle').hidden=false;
-  f.querySelector('#apiSave').onclick=()=>{const k=f.querySelector('#apiKey').value.trim();if(!k)return;ls.set('gemkey',k);f.remove();add('sys','Chiave salvata. Ora puoi fare la tua domanda.');inp.focus()}}
+  const save=()=>{const k=f.querySelector('#apiKey').value.trim().replace(/\s+/g,'');if(!k)return;ls.set('gemkey',k);f.remove();
+    if(pendingQ){const q=pendingQ;pendingQ=null;add('sys','Chiave salvata. Rispondo alla tua domanda…');ask(q,true)}else{add('sys','Chiave salvata. Ora puoi fare la tua domanda.');inp.focus()}};
+  f.querySelector('#apiSave').onclick=save;f.querySelector('#apiKey').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save()}});setTimeout(()=>{try{f.querySelector('#apiKey').focus()}catch(e){}},50)}
+let pendingQ=null;
 const GEM_MODELS=['gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest'];
 async function viaGemini(key,msgs){
   const contents=msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
   let last;
   for(const model of [ls.get('gemmodel',GEM_MODELS[0])].concat(GEM_MODELS)){
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),40000);let r;
+    try{r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',signal:ctl.signal,
       headers:{'content-type':'application/json','x-goog-api-key':key},
-      body:JSON.stringify({systemInstruction:{parts:[{text:INSTR}]},contents,generationConfig:{maxOutputTokens:2048,temperature:0.6}})});
+      body:JSON.stringify({systemInstruction:{parts:[{text:INSTR}]},contents,generationConfig:{maxOutputTokens:8192,temperature:0.6}})})}
+    catch(err){clearTimeout(to);const e=new Error(err&&err.name==='AbortError'?'Gemini non ha risposto entro 40 secondi':'connessione a Gemini non riuscita ('+((err&&err.message)||'rete')+')');e.status=0;throw e}
+    clearTimeout(to);
     const j=await r.json().catch(()=>({}));
     if(r.ok){ls.set('gemmodel',model);const c=j.candidates&&j.candidates[0];
       const t=c&&c.content&&c.content.parts?c.content.parts.map(p=>p.text||'').join('').trim():'';
@@ -1652,14 +1658,14 @@ async function viaGemini(key,msgs){
     if(r.status===403)e.status=401;
     throw e}
   throw last||new Error('nessun modello disponibile')}
-async function ask(q){
-  add('u',q);const bubble=add('a','…');
+async function ask(q,again){
+  if(!again)add('u',q);const bubble=add('a','…');
   const hist=turns.slice(-10);const c=ctx();
   try{let text;
     if(sample){const input=hist.concat({role:'user',content:INSTR+'\n\nStato dell’app adesso:\n'+c+'\n\nDomanda dell’allievo: '+q});
       busy=new AbortController();
       ({text}=await sample(input,{modelTier:'quick',cache:false,signal:busy.signal,onText:({text})=>{bubble.textContent=text;log.scrollTop=log.scrollHeight}}))}
-    else{const key=ls.get('gemkey','');if(!key){bubble.remove();keyForm();return}
+    else{const key=ls.get('gemkey','');if(!key){bubble.remove();pendingQ=q;keyForm();return}
       text=await viaGemini(key,hist.concat({role:'user',content:'Stato dell’app adesso:\n'+c+'\n\nDomanda: '+q}))}
     bubble.textContent=text;turns.push({role:'user',content:q},{role:'assistant',content:text});
   }catch(e){const code=e&&e.code;
@@ -1668,8 +1674,8 @@ async function ask(q){
       code==='rate_limited'?'Troppe domande in poco tempo: riprova tra qualche secondo.':
       e&&e.status===401?'La chiave Gemini non è valida. Incollane una nuova.':
       e&&e.status===429?'Hai raggiunto il limite gratuito di Gemini per ora: riprova tra un minuto, o domani se è il limite giornaliero.':
-      'Il maestro non ha risposto: '+((e&&e.message)||'errore di rete')+'.';
-    if(e&&e.status===401){ls.set('gemkey','');keyForm()}}
+      'Il maestro non ha risposto: '+((e&&e.message)||'errore di rete')+(e&&e.status?` (codice ${e.status})`:'')+'. Se si ripete, scrivi /chiave per inserire di nuovo la chiave.';
+    if(e&&e.status===401){ls.set('gemkey','');pendingQ=q;keyForm()}}
   finally{busy=null;log.scrollTop=log.scrollHeight}}
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const q=inp.value.trim();if(!q||busy)return;inp.value='';
   if(!sample&&/^\/chiave$/i.test(q)){ls.set('gemkey','');keyForm();return}
