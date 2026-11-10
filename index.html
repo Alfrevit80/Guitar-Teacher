@@ -493,6 +493,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <div class="seq" id="pSeq"></div>
       <div class="row exctl">
         <span id="pTempo" class="row"><button class="btn round" id="pMinus" aria-label="Più lento">−</button><span class="exbpm"><b id="pBpm">60</b> bpm</span><button class="btn round" id="pPlus" aria-label="Più veloce">+</button><span class="small muted" id="pTarget"></span><label class="volrow mini" for="mvol2" title="Volume del metronomo"><span class="small muted">Click</span><input type="range" class="mvol" id="mvol2" min="0" max="100" step="1" value="70" aria-label="Volume del metronomo"><span class="mvolv mono small">70</span></label></span>
+        <button class="btn" id="pMetro" aria-pressed="false">♩ Solo metronomo</button>
         <button class="btn" id="pDemo">▶ Ascolta l’esempio</button>
         <button class="btn big" id="pStart">Inizia</button>
         <span class="exnow" id="pNow" aria-live="polite"></span>
@@ -1225,7 +1226,7 @@ function renderItem(){const x=cur,s=st(x.id);
   $('pFing').hidden=x.type!=='seq';$('pFing').textContent=showFing?'Mostra note':'Mostra dita';
   const tempo=x.type==='seq'||x.type==='chord'||x.type==='improv';
   $('pTempo').hidden=!tempo;$('pBpm').textContent=bpm;$('pTarget').textContent=tempo?`obiettivo ${x.target}`:'';
-  $('pDemo').hidden=!(x.type==='seq'||x.type==='chord'||x.type==='improv');
+  $('pDemo').hidden=!(x.type==='seq'||x.type==='chord'||x.type==='improv');$('pMetro').hidden=!tempo;
   $('pDemo').textContent=x.type==='improv'?'▶ Ascolta la base':'▶ Ascolta l’esempio';
   $('pStart').textContent='Inizia';$('pStart').disabled=false;$('pStart').classList.remove('on');
   $('pRep').hidden=true;$('pNow').textContent='';
@@ -1253,7 +1254,7 @@ function renderSeqChips(st2){const x=cur;$('pSeq').innerHTML=x.notes.map((p,i)=>
 const nowHTML=p=>`<b>${nn(p.m)}</b> · ${pos(p)} · <span class="fing">${p.f?`dito ${p.d} (${FING[p.d]})`:'corda a vuoto'}</span>`;
 
 /* ---------- esempio ---------- */
-function playDemo(){if(demo){stopDemo();return}if(run)return;const x=cur,a=QC.audio();QC.stopMetro();
+function playDemo(){if(demo){stopDemo();return}if(run)return;metroStop();const x=cur,a=QC.audio();QC.stopMetro();
   const beat=60/bpm,seq=makeSeq(),t0=a.currentTime+0.3+4*beat;
   let end;
   if(x.type==='seq'){const iv=beat/x.sub;countIn(seq,t0,beat);x.notes.forEach((p,i)=>seq.add(t0+i*iv,tt=>QC.pluckAt(p.m,tt)));
@@ -1272,12 +1273,17 @@ function playDemo(){if(demo){stopDemo();return}if(run)return;const x=cur,a=QC.au
     else{const i=demo.iv?Math.floor((tt-demo.t0)/demo.iv):0;const key=demo.iv?i:Math.floor((tt-demo.t0)/demo.beat*2);if(key!==demo.k){demo.k=key;demo.ui(i,tt)}}
     requestAnimationFrame(loop)};loop()}
 function stopDemo(){if(!demo)return;demo.seq.stop();demo=null;$('pDemo').classList.remove('on');$('pDemo').textContent=cur&&cur.type==='improv'?'▶ Ascolta la base':'▶ Ascolta l’esempio';$('pStart').disabled=false;$('pNow').textContent='';drawStatic()}
-function stopAll(){stopDemo();if(run){run.seq&&run.seq.stop();run=null}}
+let metro=null;
+function metroToggle(){if(metro){metroStop();return}if(run)return;stopDemo();const a=QC.audio();QC.stopMetro();
+  metro={next:a.currentTime+0.1,k:0};metro.timer=setInterval(()=>{if(!metro)return;while(metro.next<a.currentTime+0.12){QC.click(metro.next,metro.k%4===0);metro.k++;metro.next+=60/bpm}},25);
+  $('pMetro').classList.add('on');$('pMetro').setAttribute('aria-pressed','true');$('pMetro').textContent='■ Ferma metronomo'}
+function metroStop(){if(!metro)return;clearInterval(metro.timer);metro=null;$('pMetro').classList.remove('on');$('pMetro').setAttribute('aria-pressed','false');$('pMetro').textContent='♩ Solo metronomo'}
+function stopAll(){metroStop();stopDemo();if(run){run.seq&&run.seq.stop();run=null}}
 
 /* ---------- esecuzione ---------- */
 QC.exRunning=()=>!!(run&&run.live);
 QC.exFeed=(f,pd,t)=>{if(run&&run.feed)run.feed(f,pd,t)};
-function start(){if(run){abort();return}stopDemo();const x=cur,a=QC.audio();QC.stopMetro();
+function start(){if(run){abort();return}stopDemo();metroStop();const x=cur,a=QC.audio();QC.stopMetro();
   if((x.type==='chord'||x.type==='improv')&&!QC.hasInput()&&!window.__qcTest){$('pMsg').textContent='Per questo esercizio serve la chitarra collegata: tocca «Attiva ingresso».';return}
   $('pRep').hidden=true;res=null;$('pStart').textContent='Ferma';$('pStart').classList.add('on');$('pDemo').disabled=true;
   ({seq:startSeq,chord:startChord,finder:startPrompt,ear:startPrompt,improv:startImprov})[x.type](x,a)}
@@ -1592,7 +1598,7 @@ function applyPlacement(P,src,T){const now=Date.now();let i=0;TEST=null;saveTest
 $('tStart').onclick=()=>startSession(SET.dur);
 
 /* ---------- pulsanti player ---------- */
-$('pStart').onclick=start;$('pDemo').onclick=playDemo;
+$('pStart').onclick=start;$('pDemo').onclick=playDemo;$('pMetro').onclick=metroToggle;
 $('pMinus').onclick=()=>{if(run||demo)return;bpm=Math.max(40,bpm-4);$('pBpm').textContent=bpm};
 $('pPlus').onclick=()=>{if(run||demo)return;bpm=Math.min(200,bpm+4);$('pBpm').textContent=bpm};
 $('pFing').onclick=()=>{showFing=!showFing;ls.set('exfing',showFing);$('pFing').textContent=showFing?'Mostra note':'Mostra dita';drawStatic(res&&res.st?{st:res.st,cur:-1}:undefined)};
