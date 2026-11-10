@@ -326,6 +326,11 @@ input[type=range]{width:100%;accent-color:var(--green)}
 #pTest,#pTres{display:flex;flex-direction:column;gap:14px}
 body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:focus{outline:2px solid var(--green);outline-offset:2px}
 .backup{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.inbox{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.devsel{max-width:180px}
+.vu{width:80px;height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden;display:inline-block}
+.vu i{display:block;height:100%;width:0;background:var(--muted);transition:width .08s}
+.vu i.ok{background:var(--green)}.vu i.hot{background:var(--red)}
 .exnow .cnt.small{font-size:calc(13px * var(--fs));color:var(--muted)}
 @media (min-width:861px){
   html,body{overflow:hidden}
@@ -819,7 +824,7 @@ $('modeNote').onclick=()=>setMode(false);$('modeTune').onclick=()=>setMode(true)
 
 const exOn=()=>!!(window.QC&&QC.exRunning());
 function listen(){if(!analyser)return;requestAnimationFrame(listen);if(++frame%(exOn()?1:(tunerOn?2:3)))return;
-  analyser.getFloatTimeDomainData(buf);const f=autoCorrelate(buf,ac.sampleRate);
+  analyser.getFloatTimeDomainData(buf);const f=autoCorrelate(buf,ac.sampleRate);vu(pd.rms);
   if(exOn()){QC.exFeed(f,pd,ac.currentTime);return}
   if(tunerOn){tunerUpdate(f);return}
   if(f<60||f>1400){last=[];return}
@@ -827,25 +832,38 @@ function listen(){if(!analyser)return;requestAnimationFrame(listen);if(++frame%(
   last.push(m);if(last.length>3)last.shift();
   if(last.length===3&&last.every(x=>x===m))showNote(f,m,cents,false);
 }
-let analyser2=null,fbuf=null;
-function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null;try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
+let analyser2=null,fbuf=null,inGain=null,vuK=0,vuPeak=0,longPeak=0;
+const gainSet=()=>{const g=store.get('ingain','auto');return g==='auto'?'auto':+g||1};
+function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null;inGain=null;try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
 async function startIn(){
   try{if(navigator.audioSession)navigator.audioSession.type='play-and-record'}catch(e){}
   const id=$('dev').value||store.get('dev','');
-  stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:id?{exact:id}:undefined,echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
-  const a=audio(),src=a.createMediaStreamSource(stream);analyser=a.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(analyser.fftSize);src.connect(analyser); // nessuna uscita: niente rientro
-  analyser2=a.createAnalyser();analyser2.fftSize=8192;analyser2.smoothingTimeConstant=0;fbuf=new Float32Array(analyser2.frequencyBinCount);src.connect(analyser2);
+  stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:id?{exact:id}:undefined,echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}}});
+  const a=audio(),src=a.createMediaStreamSource(stream);
+  /* somma i due canali della scheda: la chitarra può essere sull'ingresso 1 o sul 2 */
+  const sp=a.createChannelSplitter(2);inGain=a.createGain();inGain.channelCount=1;inGain.channelCountMode='explicit';inGain.gain.value=gainSet()==='auto'?Math.max(1,store.get('autogain',1)):gainSet();longPeak=0;
+  src.connect(sp);sp.connect(inGain,0);sp.connect(inGain,1);
+  analyser=a.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(analyser.fftSize);inGain.connect(analyser); // nessuna uscita: niente rientro
+  analyser2=a.createAnalyser();analyser2.fftSize=8192;analyser2.smoothingTimeConstant=0;fbuf=new Float32Array(analyser2.frequencyBinCount);inGain.connect(analyser2);
   listen();
 }
+function vu(r){vuPeak=Math.max(r,vuPeak*0.9);
+  if(inGain&&gainSet()==='auto'){const g=inGain.gain.value,raw=r/g;longPeak=Math.max(raw,longPeak*0.996);
+    if(longPeak>0.002){const tg=Math.max(1,Math.min(12,0.12/longPeak));const ng=g+(tg-g)*(tg<g?0.08:0.03);inGain.gain.value=ng;if(vuK%60===0)store.set('autogain',Math.round(ng*10)/10)}}if(++vuK%3)return;const db=vuPeak>0?20*Math.log10(vuPeak):-90,w=Math.max(0,Math.min(100,(db+60)/54*100));
+  document.querySelectorAll('.vu i').forEach(el=>{el.style.width=w+'%';el.className=db>-6?'hot':db>-40?'ok':''})}
 async function listDevices(){
   try{const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
-    const s=$('dev'),saved=store.get('dev','');
-    s.innerHTML=ds.map((d,i)=>`<option value="${d.deviceId}">${(d.label||('Ingresso '+(i+1))).replace(/</g,'')}</option>`).join('');
-    const cur=stream&&stream.getAudioTracks()[0].getSettings().deviceId;
-    s.value=cur||saved||(ds[0]&&ds[0].deviceId)||'';s.hidden=ds.length<2;
+    const saved=store.get('dev','');const cur=stream&&stream.getAudioTracks()[0].getSettings().deviceId;
+    const html=ds.map((d,i)=>`<option value="${d.deviceId}">${(d.label||('Ingresso '+(i+1))).replace(/</g,'')}</option>`).join('');
+    document.querySelectorAll('.devsel,#dev').forEach(s=>{s.innerHTML=html;s.value=cur||saved||(ds[0]&&ds[0].deviceId)||'';s.hidden=s.id==='dev'||!stream})
   }catch(e){}
 }
-$('dev').onchange=async()=>{store.set('dev',$('dev').value);if(stream){stopIn();try{await startIn()}catch(e){}}};
+async function devChange(v){store.set('dev',v);$('dev').value=v;document.querySelectorAll('.devsel').forEach(s=>s.value=v);if(stream){stopIn();try{await startIn();await listDevices();micUI(true)}catch(e){micUI(false);micSay(micErrText(e))}}}
+$('dev').onchange=()=>devChange($('dev').value);
+document.querySelectorAll('.micbtn').forEach(b=>{const w=document.createElement('span');w.className='inbox';
+  w.innerHTML='<select class="devsel small" aria-label="Scheda audio" hidden></select><span class="vu" title="Livello del segnale della chitarra" hidden><i></i></span><select class="gainsel small" aria-label="Guadagno dell’ingresso" title="Guadagno: alzalo se la barra del livello resta bassa" hidden>'+['auto',1,2,4,8,16].map(g=>`<option value="${g}">${g==='auto'?'Guadagno automatico':'Guadagno ×'+g}</option>`).join('')+'</select>';
+  b.after(w);w.querySelector('.devsel').onchange=e=>devChange(e.target.value);
+  const gs=w.querySelector('.gainsel');gs.value=String(gainSet());gs.onchange=e=>{const v=e.target.value,g=v==='auto'?'auto':+v;store.set('ingain',g);if(inGain&&g!=='auto')inGain.gain.value=g;longPeak=0;document.querySelectorAll('.gainsel').forEach(x=>x.value=String(g))}});
 function micErrText(e){const n=e&&e.name||'';
   if(!window.isSecureContext)return 'L’ingresso audio funziona solo da un indirizzo sicuro (https): apri l’app da alfrevit80.github.io/Guitar-Teacher.';
   if(n==='NotAllowedError'||n==='SecurityError')return 'Il permesso per l’ingresso audio è bloccato. Sul Mac apri Impostazioni di Sistema → Privacy e sicurezza → Microfono e attiva il tuo browser. Poi controlla il permesso del sito: in Safari da Safari → Impostazioni → Siti web → Microfono, in Chrome dall’icona a sinistra dell’indirizzo. Infine ricarica la pagina e riprova.';
@@ -865,12 +883,13 @@ async function micToggle(){
     try{await startIn()}catch(e){if(e&&e.name==='OverconstrainedError'){store.set('dev','');$('dev').value='';await startIn()}else throw e}
     await listDevices();
     micUI(true);document.dispatchEvent(new Event('qc-mic'));
-    micSay('Ingresso attivo. Se suonando non succede nulla, scegli la scheda audio nel quadrante 4 degli Strumenti.');
+    micSay('Ingresso attivo. Suona una corda: la barra accanto al pulsante deve muoversi. Se resta ferma scegli la scheda audio giusta dal menu; se si muove poco, il guadagno automatico la alza da solo dopo qualche nota.');
   }catch(e){stopIn();micUI(false);document.dispatchEvent(new Event('qc-mic-err'));micSay(micErrText(e));
     if(tunerOn)$('tfreq').textContent='Ingresso audio non disponibile: leggi il messaggio sotto.'}
   finally{micBusy=false}
 }
-function micUI(on){document.querySelectorAll('.micbtn').forEach(b=>{b.textContent=on?'Ingresso attivo':'Attiva ingresso';b.classList.toggle('on',on)})}
+function micUI(on){document.querySelectorAll('.micbtn').forEach(b=>{b.textContent=on?'Ingresso attivo':'Attiva ingresso';b.classList.toggle('on',on)});
+  document.querySelectorAll('.inbox .vu,.inbox .gainsel').forEach(e=>e.hidden=!on);document.querySelectorAll('.inbox .devsel').forEach(e=>e.hidden=!on||e.options.length<2);if(!on)document.querySelectorAll('.vu i').forEach(el=>el.style.width='0')}
 document.querySelectorAll('.micbtn').forEach(b=>b.onclick=micToggle);
 $('micMsg').textContent='Collega la chitarra alla scheda audio, attiva l’ingresso e suona una corda: la nota appare qui e si accende sul manico.';
 
