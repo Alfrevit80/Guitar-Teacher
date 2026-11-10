@@ -426,6 +426,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   <!-- 3 -->
   <section class="q" aria-label="Manico">
     <div class="qh"><span class="qn">3</span><span class="qt">Manico</span><span class="sp"></span>
+      <label class="volrow mini" for="gvol1" title="Volume della chitarra"><span class="small muted">Volume</span><input type="range" class="gvol" id="gvol1" min="0" max="100" step="1" value="80" aria-label="Volume della chitarra"><span class="gvolv mono small">80</span></label>
       <button class="btn small" id="labels">Mostra gradi</button>
     </div>
     <div class="fbwrap"><svg id="fb" viewBox="0 0 900 210" aria-label="Manico della chitarra con la scala"></svg></div>
@@ -501,7 +502,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <div class="pvis" id="pVis"></div>
       <div class="seq" id="pSeq"></div>
       <div class="row exctl">
-        <span id="pTempo" class="row"><button class="btn round" id="pMinus" aria-label="Più lento">−</button><span class="exbpm"><b id="pBpm">60</b> bpm</span><button class="btn round" id="pPlus" aria-label="Più veloce">+</button><span class="small muted" id="pTarget"></span><label class="volrow mini" for="mvol2" title="Volume del metronomo"><span class="small muted">Click</span><input type="range" class="mvol" id="mvol2" min="0" max="100" step="1" value="70" aria-label="Volume del metronomo"><span class="mvolv mono small">70</span></label></span>
+        <span id="pTempo" class="row"><button class="btn round" id="pMinus" aria-label="Più lento">−</button><span class="exbpm"><b id="pBpm">60</b> bpm</span><button class="btn round" id="pPlus" aria-label="Più veloce">+</button><span class="small muted" id="pTarget"></span><label class="volrow mini" for="mvol2" title="Volume del metronomo"><span class="small muted">Click</span><input type="range" class="mvol" id="mvol2" min="0" max="100" step="1" value="70" aria-label="Volume del metronomo"><span class="mvolv mono small">70</span></label><label class="volrow mini" for="gvol2" title="Volume della chitarra e della base negli esempi"><span class="small muted">Esempio</span><input type="range" class="gvol" id="gvol2" min="0" max="100" step="1" value="80" aria-label="Volume degli esempi"><span class="gvolv mono small">80</span></label></span>
         <button class="btn" id="pMetro" aria-pressed="false">♩ Solo metronomo</button>
         <button class="btn" id="pDemo">▶ Ascolta l’esempio</button>
         <button class="btn big" id="pStart">Inizia</button>
@@ -670,6 +671,7 @@ function audio(){
   if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
     try{if(navigator.audioSession&&!stream)navigator.audioSession.type='playback'}catch(e){}}
   if(ac.state!=='running')ac.resume().catch(()=>{});
+  loadSF(sfKind());loadSF('basso');
   return ac}
 /* iPhone: senza questo, con il tasto silenzioso attivo Web Audio resta muto */
 function silentWav(){const sr=8000,n=800,bytes=new Uint8Array(44+n*2),v=new DataView(bytes.buffer);
@@ -692,7 +694,7 @@ function getBody(){if(body)return body;const a=ac;
   const r3=a.createBiquadFilter();r3.type='peaking';r3.frequency.value=2400;r3.Q.value=1;r3.gain.value=2.5;
   const sh=a.createBiquadFilter();sh.type='highshelf';sh.frequency.value=5500;sh.gain.value=-8;
   const comp=a.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=3;comp.attack.value=0.003;comp.release.value=0.2;
-  inp.connect(hp).connect(r1).connect(r2).connect(r3).connect(sh).connect(comp).connect(out).connect(a.destination);
+  inp.connect(hp).connect(r1).connect(r2).connect(r3).connect(sh).connect(comp).connect(out).connect(instOut());
   body=inp;return body}
 /* Karplus-Strong con ritardo frazionario: corda pizzicata, intonata con precisione */
 function ksBuffer(f){const key=Math.round(f*100);if(ksCache.has(key))return ksCache.get(key);
@@ -710,9 +712,29 @@ function ksBuffer(f){const key=Math.round(f*100);if(ksCache.has(key))return ksCa
   const fade=Math.floor(sr*0.3);for(let i=0;i<fade;i++)out[N-1-i]*=i/fade;
   if(ksCache.size>80)ksCache.delete(ksCache.keys().next().value);
   ksCache.set(key,buf);return buf}
-function pluck(m,when,vol){const a=audio(),f=a4*Math.pow(2,(m-69)/12);
-  const play=()=>{const t=Math.max(a.currentTime+0.005,when||0),src=a.createBufferSource(),g=a.createGain();
-    src.buffer=ksBuffer(f);g.gain.value=vol||0.55;src.connect(g).connect(getBody());src.start(t)};
+/* ---- campioni veri di chitarra e basso (FluidR3 GM, CC BY 3.0) ---- */
+let instGain=null,gvol=store.get('gvol',80);const sfBufs={},sfLoad={};let voices=[];
+const gGain=v=>v<=0?0:Math.pow(v/100,1.6)*1.6;
+function instOut(){if(!instGain){instGain=ac.createGain();instGain.gain.value=gGain(gvol);const lim=ac.createDynamicsCompressor();lim.threshold.value=-6;lim.ratio.value=8;lim.attack.value=0.002;lim.release.value=0.15;instGain.connect(lim).connect(ac.destination)}return instGain}
+function setGvol(v){gvol=Math.max(0,Math.min(100,Math.round(v)));store.set('gvol',gvol);if(instGain)instGain.gain.setTargetAtTime(gGain(gvol),ac.currentTime,0.02);
+  document.querySelectorAll('.gvol').forEach(r=>{if(+r.value!==gvol)r.value=gvol});document.querySelectorAll('.gvolv').forEach(e=>e.textContent=gvol)}
+const sfKind=()=>{try{return (JSON.parse(localStorage.getItem('qc_L_set')||'{}').inst==='elettrica')?'elettrica':'acustica'}catch(e){return 'acustica'}};
+function loadSF(k){if(sfLoad[k])return;sfLoad[k]=1;const sc=document.createElement('script');sc.src='suoni-'+k+'.js';sc.async=true;sc.onload=()=>decodeSF(k);sc.onerror=()=>{sfLoad[k]=0};document.head.appendChild(sc)}
+async function decodeSF(k){const data=window.QCSF&&QCSF[k];if(!data||!ac)return;const out={};
+  for(const m of Object.keys(data)){try{const bin=atob(data[m]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    const b=await new Promise((res,rej)=>{const p=ac.decodeAudioData(u.buffer,res,rej);if(p&&p.then)p.then(res,rej)});
+    const d=b.getChannelData(0);let off=0;for(let i=0;i<d.length;i++){if(Math.abs(d[i])>0.015){off=Math.max(0,i/b.sampleRate-0.003);break}}out[m]={b,off}}catch(e){}}
+  sfBufs[k]=out;try{delete QCSF[k]}catch(e){}}
+function sample(kind,m,t,vol,dur){const set=sfBufs[kind];if(!set)return false;let mm=null;for(let d=0;d<=3&&mm==null;d++){if(set[m+d])mm=m+d;else if(set[m-d])mm=m-d}
+  if(mm==null)return false;const z=set[mm],src=ac.createBufferSource(),g=ac.createGain();src.buffer=z.b;src.playbackRate.value=Math.pow(2,(m-mm)/12)*(a4/440);
+  const D=Math.min(dur||3,z.b.duration-z.off);g.gain.setValueAtTime(vol,t);g.gain.setValueAtTime(vol,t+D-0.25);g.gain.linearRampToValueAtTime(0,t+D);
+  src.connect(g).connect(instOut());src.start(t,z.off);src.stop(t+D+0.05);
+  voices.push({g,t});voices=voices.filter(v=>v.t>ac.currentTime-4);if(voices.length>30){const o=voices.shift();try{o.g.gain.cancelScheduledValues(ac.currentTime);o.g.gain.setTargetAtTime(0,ac.currentTime,0.03)}catch(e){}}
+  return true}
+function pluck(m,when,vol,kind){const a=audio(),f=a4*Math.pow(2,(m-69)/12);
+  const play=()=>{const t=Math.max(a.currentTime+0.005,when||0);
+    if(sample(kind||sfKind(),m,t,(vol||0.55)*(kind==='basso'?1.1:0.95),kind==='basso'?1.2:3))return;
+    const src=a.createBufferSource(),g=a.createGain();src.buffer=ksBuffer(f);g.gain.value=vol||0.55;src.connect(g).connect(getBody());src.start(t)};
   if(a.state==='running')play();else a.resume().then(play).catch(play)}
 
 /* ---------- 1 metronomo ---------- */
@@ -915,8 +937,9 @@ function chroma(){if(!analyser2)return null;analyser2.getFloatFrequencyData(fbuf
     const v=p*w;c[((r%12)+12)%12]+=v;tot+=v}
   if(tot<=0)return null;for(let i=0;i<12;i++)c[i]/=tot;return c}
 document.querySelectorAll('.mvol').forEach(r=>r.addEventListener('input',e=>{if(!ac)audio();setMvol(+e.target.value)}));
+document.querySelectorAll('.gvol').forEach(r=>r.addEventListener('input',e=>{if(!ac)audio();setGvol(+e.target.value)}));setGvol(gvol);
 setMvol(mvol);
-window.QC={audio,pluck,pluckAt:(m,t,v)=>pluck(m,t,v),chroma,click:(t,acc)=>click(t,acc),nmFixed,geom:{fx,cx,X0,X1,Y0,DY,FRETS},
+window.QC={audio,pluck,pluckAt:(m,t,v)=>pluck(m,t,v),bassAt:(m,t,v)=>pluck(m,t,v,'basso'),sfReady:()=>Object.keys(sfBufs).map(k=>k+':'+Object.keys(sfBufs[k]).length),instOut:()=>{audio();return instOut()},setInstrument:k=>{if(ac)loadSF(k)},chroma,click:(t,acc)=>click(t,acc),nmFixed,geom:{fx,cx,X0,X1,Y0,DY,FRETS},
   get a4(){return a4},hasInput:()=>!!analyser,exFeed:()=>{},exRunning:()=>false,
   outLat:()=>(ac&&ac.outputLatency)||0,anLat:()=>analyser?analyser.fftSize/ac.sampleRate*0.5:0,
   autoLat:()=>{const o=(ac&&(ac.outputLatency||ac.baseLatency))||0,a=analyser?analyser.fftSize/ac.sampleRate*0.5:0;let i=0;try{i=(stream&&stream.getAudioTracks()[0].getSettings().latency)||0}catch(e){}return o+a+i},
@@ -1205,7 +1228,7 @@ function diagram(k,small){const c=SH[k];if(!c.fr)return '';
 /* ================= AUDIO: BASE ================= */
 let noiseBuf=null;
 function noise(){const a=QC.audio();if(noiseBuf)return noiseBuf;const n=a.sampleRate*0.4;noiseBuf=a.createBuffer(1,n,a.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;return noiseBuf}
-let drumOut=null;function dOut(){const a=QC.audio();if(!drumOut){drumOut=a.createGain();drumOut.gain.value=0.55;drumOut.connect(a.destination)}return drumOut}
+let drumOut=null;function dOut(){const a=QC.audio();if(!drumOut){drumOut=a.createGain();drumOut.gain.value=0.55;drumOut.connect(QC.instOut())}return drumOut}
 function kick(t){const a=QC.audio(),o=a.createOscillator(),g=a.createGain();o.frequency.setValueAtTime(130,t);o.frequency.exponentialRampToValueAtTime(42,t+0.13);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(1,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+0.3);o.connect(g).connect(dOut());o.start(t);o.stop(t+0.32)}
 function snare(t){const a=QC.audio(),s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();s.buffer=noise();f.type='bandpass';f.frequency.value=1900;f.Q.value=0.7;
@@ -1225,7 +1248,7 @@ function countIn(seq,t0,beat,useHat){for(let k=0;k<4;k++){const t=t0-(4-k)*beat;
 function backing(seq,t0,beat,chords,opt){opt=opt||{};chords.forEach((k,b)=>{const tb=t0+b*4*beat;
   for(let e=0;e<8;e++)seq.add(tb+e*beat/2,tt=>hat(tt,e%2?0.09:0.15));
   seq.add(tb,kick);seq.add(tb+2*beat,kick);if(opt.drive)seq.add(tb+2.5*beat,kick);seq.add(tb+beat,snare);seq.add(tb+3*beat,snare);
-  const r=ROOT[k]-12;[0,1.5,2,3.5].forEach((q,qi)=>seq.add(tb+q*beat,tt=>QC.pluckAt(r+(qi===3&&!opt.drive?7:0),tt,0.6)))})}
+  const r=ROOT[k]-12;[0,1.5,2,3.5].forEach((q,qi)=>seq.add(tb+q*beat,tt=>QC.bassAt(r+(qi===3&&!opt.drive?7:0),tt,0.6)))})}
 
 /* ================= RILEVATORI ================= */
 function noteDet(onNote){let cand=null,candN=0,candT=0,last=null,lastT=-9,attT=null,slow=0;
@@ -1558,7 +1581,7 @@ function renderOggi(){const box=$('sideOggi');
    <div class="inst"><span class="small muted">Suono con</span><div class="segc"><button class="btn small${SET.inst==='acustica'?' on':''}" data-i="acustica">Acustica</button><button class="btn small${SET.inst==='elettrica'?' on':''}" data-i="elettrica">Elettrica</button></div></div>`;
   $('startS').onclick=()=>startSession(SET.dur);
   box.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{SET.dur=+b.dataset.d;ls.set('L_set',SET);renderOggi()});
-  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{SET.inst=b.dataset.i;ls.set('L_set',SET);renderOggi();if(cur)renderItem();else renderWelcome()})}
+  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{SET.inst=b.dataset.i;QC.setInstrument&&QC.setInstrument(SET.inst);ls.set('L_set',SET);renderOggi();if(cur)renderItem();else renderWelcome()})}
 function weekHTML(){const days=[],t=startOfDay(Date.now());const D=['D','L','M','M','G','V','S'];const set=new Set(DIARY.map(d=>startOfDay(d.d)));
   for(let i=6;i>=0;i--){const d=t-i*DAY;days.push(`<span class="wd${set.has(d)?' on':''}${i===0?' today':''}"><b></b>${D[new Date(d).getDay()]}</span>`)}
   const m30=DIARY.filter(d=>d.d>=Date.now()-30*DAY);const mins=m30.reduce((a,d)=>a+d.min,0);
@@ -1573,7 +1596,7 @@ function renderPerc(){const box=$('sidePerc'),C=curLesson();let h='';
   const last=DIARY.slice(-5).reverse();
   h+=`<button class="link" id="redoTest">${ls.get('L_place',null)?'Rifai il test d’ingresso':'Hai già suonato? Fai il test d’ingresso'}</button>`;
   h+=`<div class="diary"><div class="small muted">Diario</div>${last.length?last.map(d=>{const avg=d.items.length?Math.round(d.items.reduce((a,[,v])=>a+v,0)/d.items.length):0;return `<div class="dr"><span>${new Date(d.d).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})}</span><span class="mono">${d.min}′</span><span class="mono">${avg}</span></div>`}).join(''):'<div class="small muted">Ancora nessuna lezione.</div>'}</div>`;
-  h+=`<div class="backup"><div class="small muted">I progressi restano salvati in questo browser, su questo dispositivo. Ogni tanto salvane una copia: se cambi browser o dispositivo la puoi ripristinare.</div><div class="row"><button class="btn small" id="bkSave">Salva una copia</button><button class="btn small" id="bkLoad">Ripristina da file</button><input type="file" id="bkFile" accept="application/json,.json" hidden></div><div class="small muted" id="bkMsg"></div></div>`;
+  h+=`<div class="backup"><div class="small muted">I progressi restano salvati in questo browser, su questo dispositivo. Ogni tanto salvane una copia: se cambi browser o dispositivo la puoi ripristinare.</div><div class="row"><button class="btn small" id="bkSave">Salva una copia</button><button class="btn small" id="bkLoad">Ripristina da file</button><input type="file" id="bkFile" accept="application/json,.json" hidden></div><div class="small muted" id="bkMsg"></div></div><div class="small muted credit">Suoni di chitarra e basso: FluidR3 GM di Frank Wen, licenza CC BY 3.0.</div>`;
   box.innerHTML=h;$('redoTest').onclick=openTest;
   $('bkSave').onclick=()=>{try{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('qc_')&&k!=='qc_gemkey')o[k]=localStorage.getItem(k)}
       const blob=new Blob([JSON.stringify({app:'Quadranti Chitarra',d:new Date().toISOString(),data:o})],{type:'application/json'});
