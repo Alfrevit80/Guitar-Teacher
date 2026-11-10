@@ -331,6 +331,10 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 .vu{width:80px;height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden;display:inline-block}
 .vu i{display:block;height:100%;width:0;background:var(--muted);transition:width .08s}
 .vu i.ok{background:var(--green)}.vu i.hot{background:var(--red)}
+.caldots{display:flex;gap:8px;flex-wrap:wrap}
+.caldots span{width:16px;height:16px;border-radius:50%;border:1px solid var(--line)}
+.caldots span.on{background:var(--green);border-color:var(--green)}
+#pCal{display:flex;flex-direction:column;gap:14px}
 .exnow .cnt.small{font-size:calc(13px * var(--fs));color:var(--muted)}
 @media (min-width:861px){
   html,body{overflow:hidden}
@@ -490,7 +494,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
     <div id="pv" hidden>
       <div class="exhead">
         <div><button class="link" id="pHome">← Torna alla lezione</button><div class="exlvl" id="pCtx"></div><h2 id="pTitle"></h2><div class="small muted" id="pBest"></div></div>
-        <div class="row"><button class="btn small" id="pFing">Mostra note</button><button class="btn small micbtn">Attiva ingresso</button></div>
+        <div class="row"><button class="btn small" id="pCalHdr" title="Misura il ritardo della scheda audio">Calibra</button><button class="btn small" id="pFing">Mostra note</button><button class="btn small micbtn">Attiva ingresso</button></div>
       </div>
       <details class="concept"><summary id="pLesson"></summary><p id="pConceptTxt"></p></details>
       <p class="exdesc" id="pDesc"></p>
@@ -507,7 +511,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <div class="report" id="pRep" hidden>
         <div class="grade"><div class="score" id="pScore"></div><div><div class="verdict" id="pVerdict"></div><div class="small muted" id="pStats"></div></div></div>
         <div class="teacher" id="pText"></div>
-        <div class="row"><button class="btn" id="pRetry">Riprova</button><button class="btn" id="pAlt" hidden></button><button class="btn on" id="pNext">Avanti</button></div>
+        <div class="row"><button class="btn" id="pRetry">Riprova</button><button class="btn" id="pAlt" hidden></button><button class="btn" id="pCalBtn" hidden>Calibra il ritardo</button><button class="btn on" id="pNext">Avanti</button></div>
       </div>
     </div>
     <div id="pTest" hidden>
@@ -522,6 +526,14 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <div class="tsteps" id="tSteps"></div>
       <div class="teacher" id="tText"></div>
       <button class="btn big on" id="tStart">Inizia la lezione di oggi</button>
+    </div>
+    <div id="pCal" hidden>
+      <div><div class="exlvl">Impostazioni</div><h2 class="sumh">Calibrazione del ritardo</h2></div>
+      <p class="tintro">La scheda audio e il Mac aggiungono un piccolo ritardo tra quando suoni e quando l’app ti sente. Se non lo togliamo, il maestro ti vede sempre un po’ in ritardo anche quando sei perfetto. Misuriamolo una volta: dopo 4 colpi di attacco senti 12 click. Suona una corda a vuoto, con una pennata secca, esattamente su ogni click. Usa le stesse impostazioni di quando studi.</p>
+      <div class="row"><button class="btn small micbtn">Attiva ingresso</button><button class="btn big on" id="calGo">Inizia la calibrazione</button><button class="link" id="calBack">Torna indietro</button></div>
+      <div class="caldots" id="calDots"></div>
+      <div class="teacher" id="calRes"></div>
+      <div class="small muted" id="calNow"></div>
     </div>
     <div id="pSum" hidden>
       <div><div class="exlvl">Lezione finita</div><h2 class="sumh">Com’è andata oggi</h2></div>
@@ -907,6 +919,8 @@ setMvol(mvol);
 window.QC={audio,pluck,pluckAt:(m,t,v)=>pluck(m,t,v),chroma,click:(t,acc)=>click(t,acc),nmFixed,geom:{fx,cx,X0,X1,Y0,DY,FRETS},
   get a4(){return a4},hasInput:()=>!!analyser,exFeed:()=>{},exRunning:()=>false,
   outLat:()=>(ac&&ac.outputLatency)||0,anLat:()=>analyser?analyser.fftSize/ac.sampleRate*0.5:0,
+  autoLat:()=>{const o=(ac&&(ac.outputLatency||ac.baseLatency))||0,a=analyser?analyser.fftSize/ac.sampleRate*0.5:0;let i=0;try{i=(stream&&stream.getAudioTracks()[0].getSettings().latency)||0}catch(e){}return o+a+i},
+  lat:()=>{const c=store.get('lat',null);if(c!=null)return c;return QC.autoLat()},setLat:v=>store.set('lat',v),
   stopMetro:()=>{if(playing)toggle()},redraw:()=>{setTimeout(drawFB,0)}};
 })();
 </script>
@@ -1219,15 +1233,15 @@ function noteDet(onNote){let cand=null,candN=0,candT=0,last=null,lastT=-9,attT=n
     if(att&&t-lastT>0.08){cand=null;candN=0;last=null;attT=t}
     if(f>0&&pd.clarity>0.8){const m=Math.round(69+12*Math.log2(f/QC.a4));
       if(m===cand)candN++;else{cand=m;candN=1;candT=t}
-      if(candN===2&&m!==last){const on=(attT!=null&&candT-attT<0.12)?attT:candT;onNote(m,on-QC.anLat()-QC.outLat());last=m;lastT=t;attT=null}}
+      if(candN===2&&m!==last){const on=(attT!=null&&candT-attT<0.12)?attT:candT;onNote(m,on-QC.lat());last=m;lastT=t;attT=null}}
     else if(pd.rms<0.01){last=null;cand=null;candN=0}}}
 function onsetDet(onOn){let slow=0,lastT=-9,arm=true;
-  return (pd,t)=>{const r=pd.rms;if(r>0.015&&r>slow*1.7&&arm&&t-lastT>0.09){onOn(t-QC.anLat()-QC.outLat());lastT=t;arm=false}
+  return (pd,t)=>{const r=pd.rms;if(r>0.015&&r>slow*1.7&&arm&&t-lastT>0.09){onOn(t-QC.lat());lastT=t;arm=false}
     if(r<slow*1.15)arm=true;slow=slow*0.8+r*0.2}}
 
 /* ================= UI PLAYER ================= */
 let cur=null,ctxB=null,run=null,demo=null,res=null,showFing=ls.get('exfing',true),bpm=60;
-const view=v=>{$('pageL').classList.toggle('item',v!=='welcome');$('pWelcome').hidden=v!=='welcome';$('pv').hidden=v!=='item';$('pSum').hidden=v!=='sum';$('pTest').hidden=v!=='test';$('pTres').hidden=v!=='tres'};
+const view=v=>{$('pageL').classList.toggle('item',v!=='welcome');$('pWelcome').hidden=v!=='welcome';$('pv').hidden=v!=='item';$('pSum').hidden=v!=='sum';$('pTest').hidden=v!=='test';$('pTres').hidden=v!=='tres';$('pCal').hidden=v!=='cal'};
 function openItem(id,fromSess){stopAll();cur=ITEMS[id];res=null;bpm=workBpm(cur);
   ctxB=fromSess?SESS&&{bi:SESS.bi}:null;if(SESS&&!fromSess){const bi=SESS.blocks.findIndex(b=>b.items.includes(id));if(bi>=0){SESS.bi=bi;SESS.ii=SESS.blocks[bi].items.indexOf(id);saveSess();ctxB={bi}}}
   view('item');renderItem();renderSide();if(innerWidth<861)$('lmain').scrollIntoView({behavior:'smooth',block:'start'});kbFocus('pStart')}
@@ -1300,8 +1314,33 @@ function metroStop(){if(!metro)return;clearInterval(metro.timer);metro=null;$('p
 function stopAll(){metroStop();stopDemo();if(run){run.seq&&run.seq.stop();run=null}}
 
 /* ---------- esecuzione ---------- */
-QC.exRunning=()=>!!(run&&run.live);
-QC.exFeed=(f,pd,t)=>{if(run&&run.feed)run.feed(f,pd,t)};
+QC.exRunning=()=>!!(run&&run.live)||!!cal;
+QC.exFeed=(f,pd,t)=>{if(cal){cal.feed(pd,t);return}if(run&&run.feed)run.feed(f,pd,t)};
+/* ---------- calibrazione del ritardo ---------- */
+let cal=null,calFrom=null;
+function openCal(){stopAll();calFrom=cur?cur.id:null;view('cal');$('calNow').textContent=QC.hasInput()?'':'Prima attiva l’ingresso.';
+  const c=ls.get('lat',null);$('calDots').innerHTML=Array.from({length:12},()=>'<span></span>').join('');
+  $('calRes').innerHTML=c!=null?`<p>Ritardo attuale: ${Math.round(c*1000)} ms (misurato).</p>`:`<p>Ritardo stimato dal browser: ${Math.round(QC.autoLat()*1000)} ms. Spesso è più basso di quello vero.</p>`;
+  $('calBack').textContent=calFrom?'Torna all’esercizio':'Torna indietro';kbFocus('calGo')}
+function calStart(){if(cal)return;if(!QC.hasInput()&&!window.__qcTest){$('calNow').textContent='Prima attiva l’ingresso: tocca «Attiva ingresso».';return}
+  const a=QC.audio();QC.stopMetro();const beat=0.6,seq=makeSeq(),t0=a.currentTime+0.3+4*beat,N=12;
+  for(let k=0;k<4;k++)seq.add(t0-(4-k)*beat,tt=>QC.click(tt,k===0));const exp=[];for(let k=0;k<N;k++){exp.push(t0+k*beat);seq.add(t0+k*beat,tt=>QC.click(tt,k%4===0))}
+  let slow=0,lastT=-9,arm=true;const ons=[];
+  cal={seq,exp,ons,feed:(pd,t)=>{const r=pd.rms;if(r>0.015&&r>slow*1.7&&arm&&t-lastT>0.12){ons.push(t);lastT=t;arm=false}if(r<slow*1.15)arm=true;slow=slow*0.8+r*0.2}};
+  seq.start();$('calGo').disabled=true;$('calRes').innerHTML='';
+  const dots=[...$('calDots').children];dots.forEach(d=>d.className='');
+  const loop=()=>{if(!cal)return;const now=a.currentTime;if(now<t0){$('calNow').textContent=`Pronti… ${Math.ceil((t0-now)/beat)}`}else{const i=Math.min(N-1,Math.floor((now-t0)/beat));$('calNow').textContent=`Click ${i+1} di ${N}`;dots.forEach((d,k)=>d.classList.toggle('on',k<=i))}
+    if(now>t0+N*beat+0.5){calEnd();return}requestAnimationFrame(loop)};loop()}
+function calEnd(){const c=cal;cal=null;c.seq.stop();$('calGo').disabled=false;$('calNow').textContent='';
+  const ds=[];c.exp.forEach(e=>{let best=null;c.ons.forEach(t=>{const d=t-e;if(d>-0.15&&d<0.45&&(best==null||Math.abs(d-0.1)<Math.abs(best-0.1)))best=d});if(best!=null)ds.push(best)});
+  if(ds.length<6){$('calRes').innerHTML=`<p>Ho sentito solo ${ds.length} pennate su 12. Controlla che la barra del livello si muova quando suoni e riprova con pennate più decise.</p>`;return}
+  const sorted=ds.slice().sort((a,b)=>a-b),med=sorted[Math.floor(sorted.length/2)];const mad=sorted.map(d=>Math.abs(d-med)).sort((a,b)=>a-b)[Math.floor(sorted.length/2)];
+  if(mad>0.045){$('calRes').innerHTML=`<p>Le pennate erano troppo diverse tra loro (±${Math.round(mad*1000)} ms) per misurare bene. Riprova cercando di colpire ogni click, senza fretta.</p>`;return}
+  const lat=Math.max(0,Math.min(0.4,med));QC.setLat(lat);
+  $('calRes').innerHTML=`<p>Ritardo misurato: <b>${Math.round(lat*1000)} ms</b> (il browser ne dichiarava ${Math.round(QC.autoLat()*1000)}). Da ora lo tolgo da tutte le valutazioni: il maestro giudicherà solo il tuo tempo.</p><p class="small muted">Ripeti la calibrazione se cambi scheda audio, browser o computer.</p>`;
+  kbFocus('calBack')}
+$('calGo').onclick=calStart;
+$('calBack').onclick=()=>{if(cal){cal.seq.stop();cal=null;$('calGo').disabled=false}if(calFrom)openItem(calFrom);else{view('welcome');renderWelcome()}};
 function start(){if(run){abort();return}stopDemo();metroStop();const x=cur,a=QC.audio();QC.stopMetro();
   if((x.type==='chord'||x.type==='improv')&&!QC.hasInput()&&!window.__qcTest){$('pMsg').textContent='Per questo esercizio serve la chitarra collegata: tocca «Attiva ingresso».';return}
   $('pRep').hidden=true;res=null;$('pStart').textContent='Ferma';$('pStart').classList.add('on');$('pDemo').disabled=true;
@@ -1325,7 +1364,7 @@ function startChord(x,a){const beat=60/bpm,seq=makeSeq(),t0=a.currentTime+0.3+4*
   const exp=[];x.chords.forEach((k,b)=>PAT[x.pat].ev.forEach(([q,d])=>exp.push({t:t0+(b*4+q)*beat,bar:b,dir:d,first:q===0})));
   run={x,bpm,beat,t0,seq,exp,ons:[],acc:x.chords.map(()=>new Float32Array(12)),accW:x.chords.map(()=>0),live:true,end:t0+x.bars*4*beat+beat*0.5,k:-1};
   const od=onsetDet(t=>run&&run.ons.push(t));
-  run.addChroma=(c,w,t)=>{const r=run,b=Math.floor((t-QC.anLat()-r.t0)/(4*r.beat));if(b<0||b>=r.x.bars||!c)return;for(let i=0;i<12;i++)r.acc[b][i]+=c[i]*w;r.accW[b]+=w};
+  run.addChroma=(c,w,t)=>{const r=run,b=Math.floor((t-QC.lat()-r.t0)/(4*r.beat));if(b<0||b>=r.x.bars||!c)return;for(let i=0;i<12;i++)r.acc[b][i]+=c[i]*w;r.accW[b]+=w};
   run.feed=(f,pd,t)=>{od(pd,t);if(pd.rms>0.012)run&&run.addChroma(QC.chroma(),pd.rms,t)};
   run.ui=()=>{const r=run,now=a.currentTime;if(now<r.t0){$('pNow').innerHTML=`<span class="cnt">${Math.max(1,Math.ceil((r.t0-now)/r.beat))}</span> pronti…`;drawStatic({cur:r.x.chords[0],bar:0,slot:null});return}
     const p8=Math.floor((now-r.t0)/r.beat*2),bar=Math.min(r.x.bars-1,Math.floor(p8/8));if(p8===r.k)return;r.k=p8;
@@ -1374,8 +1413,9 @@ function matchTimes(exp,evs,w,tol,same){const used=new Set();return exp.map((e,i
     if(!same||same(v,e)){if(!bm||Math.abs(d)<Math.abs(bm.d))bm={k,d,v}}else if(!ba||Math.abs(d)<Math.abs(ba.d))ba={k,d,v}});
   if(bm){used.add(bm.k);return{hit:true,d:bm.d,ok:Math.abs(bm.d)<=tol}}if(ba){used.add(ba.k);return{hit:false,other:ba.v}}return null})}
 const stats=ds=>{const mean=ds.length?ds.reduce((a,b)=>a+b,0)/ds.length:0;const sd=ds.length>1?Math.sqrt(ds.reduce((a,b)=>a+(b-mean)**2,0)/ds.length):0;
-  const tq=ds.length?Math.max(0,Math.min(1,0.5*(1-Math.abs(mean)/0.12)+0.5*(1-sd/0.08))):0;return{mean,sd,tq}};
-function timingLine(mean,sd,n){if(n<3)return '';if(sd>0.06)return 'Il tempo non è ancora regolare: alcune note arrivano prima del click, altre dopo. Conta a voce alta insieme al metronomo.';
+  const tq=ds.length?Math.max(0,Math.min(1,0.5*(1-Math.abs(mean)/0.12)+0.5*(1-sd/0.1))):0;return{mean,sd,tq}};
+function timingLine(mean,sd,n){if(n<3)return '';
+  if(mean>0.04&&sd<0.045&&ls.get('lat',null)==null)return `Arrivi sempre in ritardo della stessa quantità, circa ${Math.round(mean*1000)} millisecondi, con un tempo molto regolare: probabilmente è il ritardo della scheda audio, non tuo. Fai la calibrazione del ritardo e il voto diventerà giusto.`;if(sd>0.06)return 'Il tempo non è ancora regolare: alcune note arrivano prima del click, altre dopo. Conta a voce alta insieme al metronomo.';
   if(mean<-0.04)return `Tendi ad anticipare di circa ${Math.round(-mean*1000)} millisecondi: aspetta il click, non correre.`;
   if(mean>0.05)return `Arrivi un po’ in ritardo, circa ${Math.round(mean*1000)} millisecondi: prepara le dita prima del click.`;
   return 'Il tempo è solido: stai bene sul click.'}
@@ -1457,6 +1497,7 @@ function finish(){const r=run;if(!r)return;r.seq&&r.seq.stop();clearTimeout(r.to
   $('pVerdict').textContent=verdict(R.score);$('pStats').textContent=R.stats;
   $('pText').innerHTML=R.lines.concat(msg).map(t=>`<p>${t}</p>`).join('')+'<p class="sign">— il maestro</p>';
   const nb=st(x.id).bpm;$('pAlt').hidden=!(nb&&nb!==r.bpm);if(nb&&nb!==r.bpm){$('pAlt').textContent=`Riprova a ${nb} bpm`;$('pAlt').dataset.b=nb}
+  $('pCalBtn').hidden=!(R.lines.some(t=>/calibrazione del ritardo/.test(t)));
   setNext();renderSide();const s2=st(x.id);$('pBest').textContent=`Record ${s2.best} · ${s2.n} ${s2.n===1?'prova':'prove'}`;try{$('pRep').scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}kbFocus('pRetry')}
 function setNext(){const n=nextTarget();$('pNext').hidden=!n;if(n)$('pNext').textContent=n.label}
 function nextTarget(){if(TEST&&TEST.active)return{label:'Continua il test',go:testNext};if(SESS&&ctxB){const b=SESS.blocks[SESS.bi];if(SESS.ii+1<b.items.length)return{label:'Esercizio successivo',go:()=>{SESS.ii++;saveSess();openItem(b.items[SESS.ii],true)}};
@@ -1499,7 +1540,7 @@ function greeting(){const L=curLesson(),g=daysSince();const last=DIARY[DIARY.len
 function renderSide(){const a=document.activeElement,fid=a&&a.classList&&a.classList.contains('pitem')?a.dataset.id:null,inP=a&&a.closest&&a.closest('#sidePerc');renderOggi();renderPerc();
   if(fid){const n=document.querySelector(`#${inP?'sidePerc':'sideOggi'} .pitem[data-id="${fid}"]`);if(n)n.focus({preventScroll:true})}}
 function kbFocus(id){const el=$(id);if(el&&!el.hidden&&el.offsetParent)try{el.focus({preventScroll:true})}catch(e){}}
-QC.kbDefault=()=>{if(!$('pv').hidden){if(!$('pRep').hidden&&!run)return $('pRetry');return $('pStart')}if(!$('pWelcome').hidden)return $('wStart');if(!$('pTres').hidden)return $('tStart');if(!$('pTest').hidden)return $('tGo');return $('startS')};
+QC.kbDefault=()=>{if(!$('pCal').hidden)return $('calGo').disabled?$('calBack'):$('calGo');if(!$('pv').hidden){if(!$('pRep').hidden&&!run)return $('pRetry');return $('pStart')}if(!$('pWelcome').hidden)return $('wStart');if(!$('pTres').hidden)return $('tStart');if(!$('pTest').hidden)return $('tGo');return $('startS')};
 function renderOggi(){const box=$('sideOggi');
   if(SESS){const el=Math.floor((Date.now()-SESS.start)/1000);let acc=0;
     const rows=SESS.blocks.map((b,bi)=>{const start=acc;acc+=b.min;const on=bi===SESS.bi;
@@ -1617,6 +1658,7 @@ function applyPlacement(P,src,T){const now=Date.now();let i=0;TEST=null;saveTest
 $('tStart').onclick=()=>startSession(SET.dur);
 
 /* ---------- pulsanti player ---------- */
+$('pCalBtn').onclick=openCal;$('pCalHdr').onclick=openCal;
 $('pStart').onclick=start;$('pDemo').onclick=playDemo;$('pMetro').onclick=metroToggle;
 $('pMinus').onclick=()=>{if(run||demo)return;bpm=Math.max(40,bpm-4);$('pBpm').textContent=bpm};
 $('pPlus').onclick=()=>{if(run||demo)return;bpm=Math.min(200,bpm+4);$('pBpm').textContent=bpm};
