@@ -648,7 +648,7 @@ $('fb').addEventListener('click',e=>{const c=e.target.closest('.cell');if(!c)ret
 let ac=null,body=null,silentEl=null;const ksCache=new Map();
 function audio(){
   if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
-    try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
+    try{if(navigator.audioSession&&!stream)navigator.audioSession.type='playback'}catch(e){}}
   if(ac.state!=='running')ac.resume().catch(()=>{});
   return ac}
 /* iPhone: senza questo, con il tasto silenzioso attivo Web Audio resta muto */
@@ -825,8 +825,9 @@ function listen(){if(!analyser)return;requestAnimationFrame(listen);if(++frame%(
   if(last.length===3&&last.every(x=>x===m))showNote(f,m,cents,false);
 }
 let analyser2=null,fbuf=null;
-function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null}
+function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null;try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
 async function startIn(){
+  try{if(navigator.audioSession)navigator.audioSession.type='play-and-record'}catch(e){}
   const id=$('dev').value||store.get('dev','');
   stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:id?{exact:id}:undefined,echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
   const a=audio(),src=a.createMediaStreamSource(stream);analyser=a.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(analyser.fftSize);src.connect(analyser); // nessuna uscita: niente rientro
@@ -848,7 +849,7 @@ function micErrText(e){const n=e&&e.name||'';
   if(n==='NotFoundError'||n==='OverconstrainedError')return 'Non trovo nessun ingresso audio: controlla che la scheda audio sia collegata via USB e accesa, poi riprova.';
   if(n==='NotReadableError'||n==='AbortError')return 'L’ingresso audio è occupato da un’altra app (per esempio GarageBand o un programma di registrazione): chiudila e riprova.';
   if(e&&e.message==='no')return 'Questo browser non dà accesso all’ingresso audio: usa Safari o Chrome aggiornati.';
-  return 'Non sono riuscito ad attivare l’ingresso ('+(n||(e&&e.message)||'errore sconosciuto')+'). Ricarica la pagina e riprova.'}
+  return 'Non sono riuscito ad attivare l’ingresso ('+[n,e&&e.message].filter(Boolean).join(': ')+'). Ricarica la pagina e riprova; se il messaggio resta, scrivimelo così com’è.'}
 function micSay(t){['micMsg','pMsg','tMsg'].forEach(id=>{const el=$(id);if(el)el.textContent=t})}
 let micBusy=false;
 async function micToggle(){
