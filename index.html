@@ -335,6 +335,9 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 .caldots span{width:16px;height:16px;border-radius:50%;border:1px solid var(--line)}
 .caldots span.on{background:var(--green);border-color:var(--green)}
 #pCal{display:flex;flex-direction:column;gap:14px}
+.chead{position:sticky;top:-12px;margin:-12px -14px 0;padding:8px 10px;display:flex;align-items:center;gap:8px;background:var(--panel);border-bottom:1px solid var(--line);cursor:ns-resize;touch-action:none;z-index:1}
+.chead .sp{flex:1}
+.grip{width:36px;height:5px;border-radius:3px;background:var(--muted);opacity:.6}
 .exnow .cnt.small{font-size:calc(13px * var(--fs));color:var(--muted)}
 @media (min-width:861px){
   html,body{overflow:hidden}
@@ -362,7 +365,10 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 @media (max-width:860px){
   html,body{height:auto}
   .app{grid-template-columns:1fr;grid-template-rows:none;height:auto;min-height:0}
-  .page2,.pageL{grid-template-columns:1fr}
+  .page2,.pageL{grid-template-columns:minmax(0,1fr)}
+  .lside,.lmain,.q{min-width:0;max-width:100%}
+  html,body{overflow-x:hidden}
+  .chatlog{max-height:40vh}
   .lside,.lmain{overflow:visible}
   .method{grid-template-columns:1fr}
   .exnow{margin-left:0;width:100%}
@@ -546,7 +552,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 </div>
 
 <div class="chat" id="chat">
-  <div class="chatlog" id="chatLog" hidden aria-live="polite"></div>
+  <div class="chatlog" id="chatLog" hidden aria-live="polite"><div class="chead" id="chatHead"><span class="grip" id="chatGrip" title="Trascina per ridimensionare" aria-hidden="true"></span><span class="small muted">Trascina per ridimensionare</span><span class="sp"></span><button type="button" class="btn small" id="chatClose" aria-label="Chiudi la conversazione">Chiudi ✕</button></div></div>
   <form class="chatbar" id="chatForm">
     <span class="who">Maestro</span>
     <input id="chatIn" type="text" autocomplete="off" placeholder="Chiedi qualcosa, anche durante l’esercizio…" aria-label="Domanda al maestro">
@@ -1789,7 +1795,14 @@ async function ask(q,again){
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const q=inp.value.trim();if(!q||busy)return;inp.value='';
   if(!sample&&/^\/chiave$/i.test(q)){ls.set('gemkey','');keyForm();return}
   ask(q)});
+const hideLog=()=>{log.hidden=true;$('chatToggle').textContent='▴'};
 $('chatToggle').onclick=()=>{log.hidden=!log.hidden;$('chatToggle').textContent=log.hidden?'▴':'▾'};
+$('chatClose').onclick=hideLog;
+document.addEventListener('pointerdown',e=>{if(!log.hidden&&!e.target.closest('#chat'))hideLog()});
+(()=>{const g=$('chatHead');let y0=0,h0=0,drag=false;const sv=ls.get('chath',null);if(sv)log.style.height=sv+'px';
+  g.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;drag=true;y0=e.clientY;h0=log.getBoundingClientRect().height;try{g.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
+  g.addEventListener('pointermove',e=>{if(!drag)return;const h=Math.max(90,Math.min(innerHeight*0.85,h0+(y0-e.clientY)));log.style.height=h+'px';log.style.maxHeight='none'});
+  const end=()=>{if(!drag)return;drag=false;ls.set('chath',Math.round(log.getBoundingClientRect().height))};g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end)})();
 inp.addEventListener('keydown',e=>{if(e.key==='Escape'){log.hidden=true;$('chatToggle').textContent='▴';inp.blur()}});
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();inp.focus()}});
 })();
