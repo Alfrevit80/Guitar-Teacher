@@ -324,6 +324,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .tsr .li.d{border-color:var(--green);color:var(--green)}.tsr .li.x{border-color:var(--warn);color:var(--warn)}
 .okt{color:var(--green)}.kot{color:var(--warn)}
 #pTest,#pTres{display:flex;flex-direction:column;gap:14px}
+body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:focus{outline:2px solid var(--green);outline-offset:2px}
 .exnow .cnt.small{font-size:calc(13px * var(--fs));color:var(--muted)}
 @media (min-width:861px){
   html,body{overflow:hidden}
@@ -1208,7 +1209,7 @@ let cur=null,ctxB=null,run=null,demo=null,res=null,showFing=ls.get('exfing',true
 const view=v=>{$('pageL').classList.toggle('item',v!=='welcome');$('pWelcome').hidden=v!=='welcome';$('pv').hidden=v!=='item';$('pSum').hidden=v!=='sum';$('pTest').hidden=v!=='test';$('pTres').hidden=v!=='tres'};
 function openItem(id,fromSess){stopAll();cur=ITEMS[id];res=null;bpm=workBpm(cur);
   ctxB=fromSess?SESS&&{bi:SESS.bi}:null;if(SESS&&!fromSess){const bi=SESS.blocks.findIndex(b=>b.items.includes(id));if(bi>=0){SESS.bi=bi;SESS.ii=SESS.blocks[bi].items.indexOf(id);saveSess();ctxB={bi}}}
-  view('item');renderItem();renderSide();if(innerWidth<861)$('lmain').scrollIntoView({behavior:'smooth',block:'start'})}
+  view('item');renderItem();renderSide();if(innerWidth<861)$('lmain').scrollIntoView({behavior:'smooth',block:'start'});kbFocus('pStart')}
 function curLabel(){const x=cur;if(TEST&&TEST.active)return `Test d’ingresso · livello ${TEST.cur+1} · prova ${TEST.qi+1} di ${TEST.queue.length}`;if(SESS&&ctxB){const b=SESS.blocks[SESS.bi];return `${b.name.split(' · ')[0]} · ${SESS.ii+1} di ${b.items.length}`}return `Pratica libera · Lezione ${x.lesson.idx+1}`}
 function renderItem(){const x=cur,s=st(x.id);
   $('pCtx').textContent=curLabel()+' · '+TYPE(x);
@@ -1424,13 +1425,13 @@ function finish(){const r=run;if(!r)return;r.seq&&r.seq.stop();clearTimeout(r.to
   if(x.type==='seq')drawStatic({st:R.st,cur:-1});else if(x.type==='chord')drawStatic({bst:R.bst});else if(x.type==='improv')drawStatic();
   $('pRep').hidden=false;$('pNow').textContent='';
   if(!R.heard){$('pScore').textContent='–';$('pScore').style.color='';$('pVerdict').textContent='Non ho sentito niente';$('pStats').textContent='';
-    $('pText').innerHTML='<p>Nessun suono rilevato. Controlla che l’ingresso sia attivo e che il volume della scheda audio non sia a zero.</p>';$('pAlt').hidden=true;setNext();return}
+    kbFocus('pRetry');$('pText').innerHTML='<p>Nessun suono rilevato. Controlla che l’ingresso sia attivo e che il volume della scheda audio non sia a zero.</p>';$('pAlt').hidden=true;setNext();return}
   const msg=record(x,R.score,(x.type==='seq'||x.type==='chord'||x.type==='improv')?r.bpm:null);
   $('pScore').innerHTML=`${R.score}<small>/100</small>`;$('pScore').style.color=R.score>=85?'var(--green)':R.score>=60?'var(--warn)':'var(--red)';
   $('pVerdict').textContent=verdict(R.score);$('pStats').textContent=R.stats;
   $('pText').innerHTML=R.lines.concat(msg).map(t=>`<p>${t}</p>`).join('')+'<p class="sign">— il maestro</p>';
   const nb=st(x.id).bpm;$('pAlt').hidden=!(nb&&nb!==r.bpm);if(nb&&nb!==r.bpm){$('pAlt').textContent=`Riprova a ${nb} bpm`;$('pAlt').dataset.b=nb}
-  setNext();renderSide();const s2=st(x.id);$('pBest').textContent=`Record ${s2.best} · ${s2.n} ${s2.n===1?'prova':'prove'}`;try{$('pRep').scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}}
+  setNext();renderSide();const s2=st(x.id);$('pBest').textContent=`Record ${s2.best} · ${s2.n} ${s2.n===1?'prova':'prove'}`;try{$('pRep').scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}kbFocus('pRetry')}
 function setNext(){const n=nextTarget();$('pNext').hidden=!n;if(n)$('pNext').textContent=n.label}
 function nextTarget(){if(TEST&&TEST.active)return{label:'Continua il test',go:testNext};if(SESS&&ctxB){const b=SESS.blocks[SESS.bi];if(SESS.ii+1<b.items.length)return{label:'Esercizio successivo',go:()=>{SESS.ii++;saveSess();openItem(b.items[SESS.ii],true)}};
     if(SESS.bi+1<SESS.blocks.length)return{label:`Avanti: ${SESS.blocks[SESS.bi+1].name.split(' · ')[0]}`,go:()=>{SESS.bi++;SESS.ii=0;saveSess();openItem(SESS.blocks[SESS.bi].items[0],true)}};
@@ -1469,7 +1470,10 @@ function greeting(){const L=curLesson(),g=daysSince();const last=DIARY[DIARY.len
   if(g<=2)return `Bentornato. L’ultima volta hai lavorato su «${lastL?lastL.t:L.t}». Oggi ripasso breve, poi «${L.t}».`;
   if(g<=6)return `Bentornato dopo ${g} giorni. Partiamo con un ripasso per rimettere in moto le mani, poi riprendiamo «${L.t}».`;
   return `È passata più di una settimana: nessun problema, succede a tutti. Oggi ripasso più lungo e ripartiamo con calma da «${L.t}».`}
-function renderSide(){renderOggi();renderPerc()}
+function renderSide(){const a=document.activeElement,fid=a&&a.classList&&a.classList.contains('pitem')?a.dataset.id:null,inP=a&&a.closest&&a.closest('#sidePerc');renderOggi();renderPerc();
+  if(fid){const n=document.querySelector(`#${inP?'sidePerc':'sideOggi'} .pitem[data-id="${fid}"]`);if(n)n.focus({preventScroll:true})}}
+function kbFocus(id){const el=$(id);if(el&&!el.hidden&&el.offsetParent)try{el.focus({preventScroll:true})}catch(e){}}
+QC.kbDefault=()=>{if(!$('pv').hidden){if(!$('pRep').hidden&&!run)return $('pRetry');return $('pStart')}if(!$('pWelcome').hidden)return $('wStart');if(!$('pTres').hidden)return $('tStart');if(!$('pTest').hidden)return $('tGo');return $('startS')};
 function renderOggi(){const box=$('sideOggi');
   if(SESS){const el=Math.floor((Date.now()-SESS.start)/1000);let acc=0;
     const rows=SESS.blocks.map((b,bi)=>{const start=acc;acc+=b.min;const on=bi===SESS.bi;
@@ -1675,5 +1679,28 @@ inp.addEventListener('keydown',e=>{if(e.key==='Escape'){log.hidden=true;$('chatT
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();inp.focus()}});
 })();
 </script>
+<script>
+(function(){
+const SEL='button:not([disabled]),summary,.tabs a';
+const vis=el=>{if(el.closest('[hidden]'))return false;const r=el.getBoundingClientRect();return r.width>0&&r.height>0};
+const typing=t=>t&&(t.tagName==='INPUT'&&t.type!=='range'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+function cands(){return [...document.querySelectorAll(SEL)].filter(el=>vis(el)&&!el.closest('.chat'))}
+function move(dir){const all=cands();if(!all.length)return;let cur=document.activeElement;
+  if(!cur||!all.includes(cur)){const d=window.QC&&QC.kbDefault&&QC.kbDefault();const f=d&&vis(d)?d:all[0];f.focus();f.scrollIntoView({block:'nearest'});return}
+  const c=cur.getBoundingClientRect(),cx=c.left+c.width/2,cy=c.top+c.height/2;let best=null,bs=1e9;
+  all.forEach(el=>{if(el===cur)return;const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,dx=x-cx,dy=y-cy;
+    let p,o;if(dir==='ArrowRight'){if(dx<=4)return;p=dx;o=Math.abs(dy)}else if(dir==='ArrowLeft'){if(dx>=-4)return;p=-dx;o=Math.abs(dy)}
+    else if(dir==='ArrowDown'){if(dy<=4)return;p=dy;o=Math.abs(dx)}else{if(dy>=-4)return;p=-dy;o=Math.abs(dx)}
+    const sc=p+o*(dir==='ArrowLeft'||dir==='ArrowRight'?3:0.6);if(sc<bs){bs=sc;best=el}});
+  if(best){best.focus();best.scrollIntoView({block:'nearest'})}}
+document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey)return;const t=e.target;if(typing(t))return;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){if(t&&t.type==='range')return;e.preventDefault();document.body.classList.add('kb');move(e.key);return}
+  if(e.code==='Space'){document.body.classList.add('kb');
+    if(t&&(t.tagName==='BUTTON'||t.tagName==='SUMMARY'||t.tagName==='A'))return;
+    const L=document.getElementById('pageL');if(L&&!L.hidden){const d=QC.kbDefault&&QC.kbDefault();if(d&&vis(d)&&!d.disabled){e.preventDefault();d.focus();d.click()}}}},true);
+document.addEventListener('pointerdown',()=>document.body.classList.remove('kb'));
+})();
+</script>
+
 </body>
 </html>
