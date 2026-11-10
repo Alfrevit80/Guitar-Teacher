@@ -842,15 +842,29 @@ async function listDevices(){
   }catch(e){}
 }
 $('dev').onchange=async()=>{store.set('dev',$('dev').value);if(stream){stopIn();try{await startIn()}catch(e){}}};
+function micErrText(e){const n=e&&e.name||'';
+  if(!window.isSecureContext)return 'L’ingresso audio funziona solo da un indirizzo sicuro (https): apri l’app da alfrevit80.github.io/Guitar-Teacher.';
+  if(n==='NotAllowedError'||n==='SecurityError')return 'Il permesso per l’ingresso audio è bloccato. Sul Mac apri Impostazioni di Sistema → Privacy e sicurezza → Microfono e attiva il tuo browser. Poi controlla il permesso del sito: in Safari da Safari → Impostazioni → Siti web → Microfono, in Chrome dall’icona a sinistra dell’indirizzo. Infine ricarica la pagina e riprova.';
+  if(n==='NotFoundError'||n==='OverconstrainedError')return 'Non trovo nessun ingresso audio: controlla che la scheda audio sia collegata via USB e accesa, poi riprova.';
+  if(n==='NotReadableError'||n==='AbortError')return 'L’ingresso audio è occupato da un’altra app (per esempio GarageBand o un programma di registrazione): chiudila e riprova.';
+  if(e&&e.message==='no')return 'Questo browser non dà accesso all’ingresso audio: usa Safari o Chrome aggiornati.';
+  return 'Non sono riuscito ad attivare l’ingresso ('+(n||(e&&e.message)||'errore sconosciuto')+'). Ricarica la pagina e riprova.'}
+function micSay(t){['micMsg','pMsg','tMsg'].forEach(id=>{const el=$(id);if(el)el.textContent=t})}
+let micBusy=false;
 async function micToggle(){
+  if(micBusy)return;
   if(stream){stopIn();micUI(false);return}
+  micBusy=true;document.querySelectorAll('.micbtn').forEach(b=>b.textContent='Attivazione…');
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('no');
-    await startIn();await listDevices();
-    micUI(true);document.dispatchEvent(new Event('qc-mic'));$('micMsg').textContent='Se la nota non compare, scegli la scheda audio dal menu accanto.';
-  }catch(e){stopIn();document.dispatchEvent(new Event('qc-mic-err'));
-    $('micMsg').textContent='Qui l’ingresso audio non è disponibile. Apri l’app in Safari o Chrome per collegare la chitarra. Intanto puoi toccare il manico per vedere e sentire le note.';
-    if(tunerOn)$('tfreq').textContent='Ingresso audio non disponibile qui: apri l’app in Safari o Chrome.'}
+    audio();
+    try{await startIn()}catch(e){if(e&&e.name==='OverconstrainedError'){store.set('dev','');$('dev').value='';await startIn()}else throw e}
+    await listDevices();
+    micUI(true);document.dispatchEvent(new Event('qc-mic'));
+    micSay('Ingresso attivo. Se suonando non succede nulla, scegli la scheda audio nel quadrante 4 degli Strumenti.');
+  }catch(e){stopIn();micUI(false);document.dispatchEvent(new Event('qc-mic-err'));micSay(micErrText(e));
+    if(tunerOn)$('tfreq').textContent='Ingresso audio non disponibile: leggi il messaggio sotto.'}
+  finally{micBusy=false}
 }
 function micUI(on){document.querySelectorAll('.micbtn').forEach(b=>{b.textContent=on?'Ingresso attivo':'Attiva ingresso';b.classList.toggle('on',on)})}
 document.querySelectorAll('.micbtn').forEach(b=>b.onclick=micToggle);
