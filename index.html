@@ -325,6 +325,7 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .okt{color:var(--green)}.kot{color:var(--warn)}
 #pTest,#pTres{display:flex;flex-direction:column;gap:14px}
 body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:focus{outline:2px solid var(--green);outline-offset:2px}
+.backup{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 .exnow .cnt.small{font-size:calc(13px * var(--fs));color:var(--muted)}
 @media (min-width:861px){
   html,body{overflow:hidden}
@@ -1421,7 +1422,7 @@ function evalImprov(r){const x=r.x,N=r.notes.length,beat=r.beat;
 
 function finish(){const r=run;if(!r)return;r.seq&&r.seq.stop();clearTimeout(r.to);run=null;resetBtns();
   const x=r.x;const R=x.type==='seq'?evalSeq(r):x.type==='chord'?evalChord(r):x.type==='improv'?evalImprov(r):evalPrompt(r);res=R;
-  if(TEST&&TEST.active)TEST.res[x.id]=R.heard?R.score:0;
+  if(TEST&&TEST.active){TEST.res[x.id]=R.heard?R.score:0;saveTest()}
   if(x.type==='seq')drawStatic({st:R.st,cur:-1});else if(x.type==='chord')drawStatic({bst:R.bst});else if(x.type==='improv')drawStatic();
   $('pRep').hidden=false;$('pNow').textContent='';
   if(!R.heard){$('pScore').textContent='–';$('pScore').style.color='';$('pVerdict').textContent='Non ho sentito niente';$('pStats').textContent='';
@@ -1506,7 +1507,16 @@ function renderPerc(){const box=$('sidePerc'),C=curLesson();let h='';
   const last=DIARY.slice(-5).reverse();
   h+=`<button class="link" id="redoTest">${ls.get('L_place',null)?'Rifai il test d’ingresso':'Hai già suonato? Fai il test d’ingresso'}</button>`;
   h+=`<div class="diary"><div class="small muted">Diario</div>${last.length?last.map(d=>{const avg=d.items.length?Math.round(d.items.reduce((a,[,v])=>a+v,0)/d.items.length):0;return `<div class="dr"><span>${new Date(d.d).toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})}</span><span class="mono">${d.min}′</span><span class="mono">${avg}</span></div>`}).join(''):'<div class="small muted">Ancora nessuna lezione.</div>'}</div>`;
-  box.innerHTML=h;$('redoTest').onclick=openTest}
+  h+=`<div class="backup"><div class="small muted">I progressi restano salvati in questo browser, su questo dispositivo. Ogni tanto salvane una copia: se cambi browser o dispositivo la puoi ripristinare.</div><div class="row"><button class="btn small" id="bkSave">Salva una copia</button><button class="btn small" id="bkLoad">Ripristina da file</button><input type="file" id="bkFile" accept="application/json,.json" hidden></div><div class="small muted" id="bkMsg"></div></div>`;
+  box.innerHTML=h;$('redoTest').onclick=openTest;
+  $('bkSave').onclick=()=>{try{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('qc_')&&k!=='qc_gemkey')o[k]=localStorage.getItem(k)}
+      const blob=new Blob([JSON.stringify({app:'Quadranti Chitarra',d:new Date().toISOString(),data:o})],{type:'application/json'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chitarra-progressi-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+      $('bkMsg').textContent='Copia salvata nella cartella Download.'}catch(e){$('bkMsg').textContent='Non sono riuscito a salvare la copia.'}};
+  $('bkLoad').onclick=()=>$('bkFile').click();
+  $('bkFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const j=JSON.parse(rd.result);if(!j||!j.data)throw 0;
+      Object.entries(j.data).forEach(([k,v])=>{if(k.startsWith('qc_')&&k!=='qc_gemkey')localStorage.setItem(k,v)});$('bkMsg').textContent='Progressi ripristinati: ricarico la pagina…';setTimeout(()=>location.reload(),800)}
+      catch(err){$('bkMsg').textContent='Questo file non è una copia dei progressi dell’app.'}};rd.readAsText(f)}}
 const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 setInterval(()=>{if(!SESS||$('pageL').hidden)return;const el=Math.floor((Date.now()-SESS.start)/1000),tot=SESS.blocks.reduce((a,b)=>a+b.min,0);const c=$('clk');if(c)c.textContent=fmtT(el);const b=$('tbar');if(b)b.style.width=Math.min(100,el/60/tot*100)+'%'},1000);
 $('pageL').addEventListener('click',e=>{const b=e.target.closest('.pitem');if(!b||run)return;
@@ -1528,11 +1538,13 @@ const QS=[{k:'exp',q:'Quanto hai studiato in passato?',o:[['0','Mai'],['1','Qual
  {k:'chords',multi:true,q:'Quali accordi sai ancora fare senza guardare?',o:[['Em','Mi minore'],['Am','La minore'],['C','Do'],['G','Sol'],['D','Re'],['E5','Power chord']]},
  {k:'scale',q:'Quali scale sai suonare?',o:[['0','Nessuna'],['1','Scala di Do'],['2','Pentatonica'],['3','Tutte e due']]},
  {k:'rhythm',q:'Riesci a tenere un ritmo giù-su a tempo con il metronomo?',o:[['0','No'],['1','Più o meno'],['2','Sì']]}];
-let TEST=null,TA={exp:null,chords:[],scale:null,rhythm:null};
+const TSAVED=ls.get('L_test',null);
+let TEST=null,TA=(TSAVED&&TSAVED.TA)||{exp:null,chords:[],scale:null,rhythm:null};
+function saveTest(){ls.set('L_test',{TA,TEST:TEST&&TEST.active?TEST:null,t:Date.now()})}
 function openTest(){stopAll();cur=null;TEST=null;view('test');renderQs();$('tMsg').textContent='';renderSide()}
 function renderQs(){$('tQs').innerHTML=QS.map(q=>`<fieldset class="tq"><legend>${esc(q.q)}${q.multi?' <span class="muted small">(anche più di uno)</span>':''}</legend><div class="topts">${q.o.map(([v,l])=>{const on=q.multi?TA[q.k].includes(v):TA[q.k]===v;return `<button type="button" class="btn small${on?' on':''}" data-k="${q.k}" data-v="${v}" aria-pressed="${on}">${esc(l)}</button>`}).join('')}</div></fieldset>`).join('')}
 $('tQs').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k,v=b.dataset.v;
-  if(k==='chords'){TA.chords=TA.chords.includes(v)?TA.chords.filter(z=>z!==v):TA.chords.concat(v)}else TA[k]=v;$('tMsg').textContent='';renderQs()});
+  if(k==='chords'){TA.chords=TA.chords.includes(v)?TA.chords.filter(z=>z!==v):TA.chords.concat(v)}else TA[k]=v;saveTest();$('tMsg').textContent='';renderQs()});
 function claimed(){const has=k=>TA.chords.includes(k);let e=0;
   if(has('Em')&&has('Am'))e=1;
   if(e>=1&&has('C')&&has('G')&&has('D')&&+TA.scale>=1)e=2;
@@ -1544,11 +1556,11 @@ $('tGo').onclick=()=>{if(!answered())return;
   if(!QC.hasInput()&&!window.__qcTest){$('tMsg').textContent='Per il test serve la chitarra collegata: tocca «Attiva ingresso». Se adesso non puoi, usa «Salta, usa solo le risposte».';return}
   const e=claimed();TEST={active:true,claimed:e,tested:{},res:{},cur:0,queue:[],qi:0};testLevel(Math.max(0,e-1))};
 $('tSkip').onclick=()=>{if(!answered())return;TEST=null;applyPlacement(claimed(),'risposte',{})};
-$('tCancel').onclick=()=>{TEST=null;view('welcome');renderWelcome();renderSide()};
-function testLevel(k){TEST.cur=k;TEST.queue=PROBES[k].map(p=>p.id);TEST.qi=0;openProbe()}
+$('tCancel').onclick=()=>{TEST=null;saveTest();view('welcome');renderWelcome();renderSide()};
+function testLevel(k){TEST.cur=k;TEST.queue=PROBES[k].map(p=>p.id);TEST.qi=0;saveTest();openProbe()}
 function openProbe(){const id=TEST.queue[TEST.qi],p=PROBES[TEST.cur].find(z=>z.id===id);openItem(id,'test');if(p.bpm){bpm=p.bpm;$('pBpm').textContent=bpm}
   $('pMsg').textContent=(QC.hasInput()?'':'Attiva l’ingresso. ')+'Prova del test: suonalo come ti viene, senza riscaldarti prima. Puoi ascoltare l’esempio.'}
-function testNext(){const id=TEST.queue[TEST.qi];if(TEST.res[id]==null)TEST.res[id]=0;TEST.qi++;
+function testNext(){const id=TEST.queue[TEST.qi];if(TEST.res[id]==null)TEST.res[id]=0;TEST.qi++;saveTest();
   if(TEST.qi<TEST.queue.length){openProbe();return}
   const k=TEST.cur,pass=TEST.queue.every(z=>(TEST.res[z]||0)>=70);TEST.tested[k]=pass;
   let nx=null;if(pass){if(k+1<5&&TEST.tested[k+1]==null)nx=k+1}else if(k-1>=0&&TEST.tested[k-1]==null)nx=k-1;
@@ -1556,7 +1568,7 @@ function testNext(){const id=TEST.queue[TEST.qi];if(TEST.res[id]==null)TEST.res[
   const ks=Object.keys(TEST.tested).map(Number),failed=ks.filter(k=>!TEST.tested[k]),passed=ks.filter(k=>TEST.tested[k]);
   const P=failed.length?Math.min(...failed):Math.max(...passed)+1;
   const T=TEST;TEST=null;applyPlacement(P,'test',T)}
-function applyPlacement(P,src,T){const now=Date.now();let i=0;
+function applyPlacement(P,src,T){const now=Date.now();let i=0;TEST=null;saveTest();
   for(let k=0;k<P;k++)LEVELS[k].lessons.forEach(L=>L.items.forEach(x=>{const s=st(x.id);if(!s.passed){s.passed=true;s.box=Math.max(s.box,1);s.bpm=s.bpm||x.bpm;s.placed=1}
     if(s.placed)s.due=now+DAY*(1+(i++%4))-3600e3}));
   saveS();ls.set('L_place',{P,d:now,src});
@@ -1611,7 +1623,9 @@ QC.lessonCtx=()=>{const L=[];const C=curLesson();L.push(`Strumento: chitarra ${S
 /* test */
 QC.L={get TEST(){return TEST},testNext,get run(){return run},openItem,finish,startSession,endSession,setBpm:b=>{bpm=b}};
 
-if(SESS){const b=SESS.blocks[SESS.bi];openItem(b.items[SESS.ii],true)}else{view('welcome');renderWelcome()}
+if(TSAVED&&TSAVED.TEST&&TSAVED.TEST.active&&Date.now()-TSAVED.t<3*DAY){TEST=TSAVED.TEST;openProbe();$('pMsg').textContent='Riprendiamo il test da dove eri rimasto. '+$('pMsg').textContent}
+else if(SESS){const b=SESS.blocks[SESS.bi];openItem(b.items[SESS.ii],true)}else{view('welcome');renderWelcome()}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 sideTab(false);route();
 })();
 </script>
