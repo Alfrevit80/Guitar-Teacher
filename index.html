@@ -137,6 +137,28 @@ input[type=range]{width:100%;accent-color:var(--green)}
 .strings .btn.ok{border-color:var(--green);color:var(--green)}
 .tgt{font-size:clamp(48px,7vw,72px);font-weight:300;line-height:1}
 .tgt sub{font-size:.32em;color:var(--muted);font-family:var(--mono);margin-left:4px;vertical-align:baseline}
+.tunerMode{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:center;justify-items:stretch}
+.tleft{display:flex;flex-direction:column;align-items:center;min-width:0}
+.tright{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.tsel{justify-content:center}
+.tright .strings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;max-width:240px}
+.tright .strings .btn{min-width:0}
+.tright .fine{width:100%;max-width:240px}
+.gauge{position:relative;width:100%;max-width:360px}
+.gauge svg{width:100%;height:auto;display:block}
+.gneedle line{stroke:var(--muted);transition:stroke .15s}.gneedle circle{fill:var(--muted)}
+.gneedle{transform-box:view-box;transform-origin:150px 150px;transition:transform .12s ease-out}
+.gneedle.ok line{stroke:var(--green)}.gneedle.ok circle{fill:var(--green)}
+.gneedle.off line{stroke:var(--warn)}.gneedle.off circle{fill:var(--warn)}
+.gread{display:flex;align-items:baseline;justify-content:center;gap:12px;margin-top:-4px}
+.gread .tgt{font-size:calc(40px * var(--fs))}
+.tcents{font-family:var(--mono);font-size:calc(13px * var(--fs));color:var(--muted);font-variant-numeric:tabular-nums}
+.fine{position:relative;width:min(300px,90%);height:30px}
+.fine .fz{position:absolute;left:35%;width:30%;top:4px;height:12px;background:color-mix(in srgb,var(--green) 18%,transparent);border-radius:3px}
+.fine .fc{position:absolute;left:50%;top:0;width:1px;height:20px;background:var(--fg)}
+.fine .fm{position:absolute;top:1px;width:4px;height:18px;margin-left:-2px;border-radius:2px;background:var(--warn);opacity:0;transition:left .12s ease-out}
+.fine .fm.ok{background:var(--green)}
+.fine span{position:absolute;top:20px;transform:translateX(-50%);font-family:var(--mono);font-size:calc(9px * var(--fs));color:var(--muted)}
 .bigmeter{position:relative;width:min(380px,100%);height:56px}
 .bigmeter .zone{position:absolute;left:45%;width:10%;top:6px;height:30px;background:color-mix(in srgb,var(--green) 14%,transparent);border-left:1px solid color-mix(in srgb,var(--green) 40%,transparent);border-right:1px solid color-mix(in srgb,var(--green) 40%,transparent)}
 .bigmeter .t{position:absolute;top:14px;width:1px;height:14px;background:var(--line);transform:translateX(-.5px)}
@@ -346,6 +368,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   .q{padding:12px 14px;gap:8px}
   .metro,.circ,.tunerMode,.fbwrap{min-height:0;overflow:hidden}
   .tuner{min-height:0;overflow:auto}
+  .tunerMode{min-height:0;overflow:auto}
   .metro{gap:min(14px,1.6vh)}
   .bpm{font-size:min(9vw,11vh)}
   .round{width:min(40px,5vh);height:min(40px,5vh)}
@@ -366,6 +389,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   html,body{height:auto}
   .app{grid-template-columns:1fr;grid-template-rows:none;height:auto;min-height:0}
   .page2,.pageL{grid-template-columns:minmax(0,1fr)}
+  .tunerMode{grid-template-columns:minmax(0,1fr)}
   .lside,.lmain,.q{min-width:0;max-width:100%}
   html,body{overflow-x:hidden}
   .chatlog{max-height:40vh}
@@ -451,17 +475,20 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <select id="dev" class="small" aria-label="Ingresso audio" hidden></select>
     </div>
     <div class="tunerMode" id="tunerPanel" hidden>
-      <div class="row" style="justify-content:center">
-        <select id="tuning" aria-label="Accordatura"></select>
-        <select id="a4" aria-label="Diapason"><option value="432">La 432</option><option value="440" selected>La 440</option><option value="442">La 442</option></select>
+      <div class="tleft">
+        <div class="gauge"><svg id="tGauge" viewBox="0 0 300 160" role="img" aria-label="Indicatore di intonazione"></svg></div>
+        <div class="gread"><div class="tgt" id="tgt">–</div><div class="tcents" id="tcents">&nbsp;</div></div>
       </div>
-      <div class="strings" id="strings"></div>
-      <div class="tgt" id="tgt">–</div>
-      <div class="bigmeter" aria-hidden="true">
-        <div class="zone"></div><div class="ticks" id="ticks"></div><div class="bneedle" id="bneedle"></div>
+      <div class="tright">
+        <div class="row tsel">
+          <select id="tuning" aria-label="Accordatura"></select>
+          <select id="a4" aria-label="Diapason"><option value="432">La 432</option><option value="440" selected>La 440</option><option value="442">La 442</option></select>
+        </div>
+        <div class="strings" id="strings"></div>
+        <div class="tstate" id="tstate">Suona una corda a vuoto</div>
+        <div class="fine" aria-hidden="true"><div class="fz"></div><div class="fc"></div><div class="fm" id="fineM"></div><span style="left:0">−10</span><span style="left:50%">0</span><span style="left:100%">+10</span></div>
+        <div class="freq" id="tfreq">tocca una corda per sentire il riferimento</div>
       </div>
-      <div class="tstate" id="tstate">Suona una corda a vuoto</div>
-      <div class="freq" id="tfreq">tocca una corda per sentire il riferimento</div>
     </div>
     <div class="tuner" id="notePanel">
       <div class="note" id="note">–</div>
@@ -834,22 +861,63 @@ $('strings').addEventListener('click',e=>{const b=e.target.closest('.btn');if(!b
   if(lockStr!=null)setTarget(lockStr);
   $('tfreq').textContent=lockStr==null?'rilevamento automatico della corda':`corda bloccata · ${hz(tuningLow()[i]).toFixed(2)} Hz · tocca di nuovo per sbloccare`});
 function setTarget(i){const m=tuningLow()[i];$('tgt').innerHTML=`${nmFixed(m%12,0)}<sub>${Math.floor(m/12)-1}</sub>`}
-(function ticks(){let h='';for(let c=-50;c<=50;c+=10){const maj=c%50===0||c===0;h+=`<div class="t${maj?' maj':''}" style="left:${50+c}%">${maj?`<span>${c>0?'+':''}${c}</span>`:''}</div>`}$('ticks').innerHTML=h})();
-function tunerUpdate(f){
-  if(f<60||f>1400){if(++miss>12){$('bneedle').style.background='var(--muted)';$('tstate').className='tstate';$('tstate').textContent='Suona una corda a vuoto'}return}
-  miss=0;ef=(ef&&Math.abs(f/ef-1)<0.06)?ef*0.65+f*0.35:f;
+(function gauge(){const R=128,C=[150,150],ang=c=>c/50*60*Math.PI/180,P=(c,r)=>[C[0]+r*Math.sin(ang(c)),C[1]-r*Math.cos(ang(c))];
+  const arc=(c1,c2,r)=>{const[a,b]=P(c1,r),[x,y]=P(c2,r);return `M${a.toFixed(1)} ${b.toFixed(1)} A${r} ${r} 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}`};
+  let h=`<path d="${arc(-50,50,R)}" fill="none" stroke="var(--line)" stroke-width="2"/>`;
+  h+=`<path d="${arc(-3,3,R)}" fill="none" stroke="var(--green)" stroke-width="10" opacity=".55"/>`;
+  h+=`<path d="${arc(-10,-3,R)}" fill="none" stroke="var(--warn)" stroke-width="4" opacity=".25"/><path d="${arc(3,10,R)}" fill="none" stroke="var(--warn)" stroke-width="4" opacity=".25"/>`;
+  for(let c=-50;c<=50;c+=5){const maj=c%10===0,[x1,y1]=P(c,R+3),[x2,y2]=P(c,R+(maj?15:9));h+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c===0?'var(--fg)':'var(--muted)'}" stroke-width="${c===0?2:maj?1.3:.8}"/>`;
+    if([-50,-20,0,20,50].includes(c)){const[x,y]=P(c,R-14);h+=`<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="JetBrains Mono,monospace">${c>0?'+':''}${c}</text>`}}
+  h+=`<text x="20" y="156" font-size="10" fill="var(--muted)" font-family="Outfit,sans-serif">bassa</text><text x="280" y="156" text-anchor="end" font-size="10" fill="var(--muted)" font-family="Outfit,sans-serif">alta</text>`;
+  h+=`<g id="gNeedle" class="gneedle"><line x1="150" y1="150" x2="150" y2="${150-R+6}" stroke-width="3" stroke-linecap="round"/><circle cx="150" cy="150" r="6"/></g>`;
+  $('tGauge').innerHTML=h})();
+let tHist=[],tEma=null,tLastI=null,tSkip=0,tSlow=0,tbuf=null,tdec=null;
+/* rilevamento preciso per l'accordatore: finestra lunga (170 ms) decimata, metodo MPM */
+function tunerPitch(){if(!analyser2)return{f:-1,rms:0};if(!tbuf){tbuf=new Float32Array(analyser2.fftSize);tdec=new Float32Array(analyser2.fftSize/2)}
+  analyser2.getFloatTimeDomainData(tbuf);const n=tdec.length;for(let i=0;i<n;i++)tdec[i]=(tbuf[2*i]+tbuf[2*i+1])*0.5;
+  const sr=ac.sampleRate/2;let e=0;for(let i=0;i<n;i++)e+=tdec[i]*tdec[i];const rms=Math.sqrt(e/n);if(rms<0.004)return{f:-1,rms};
+  const minL=Math.floor(sr/1000),maxL=Math.min(Math.floor(sr/60),(n>>1)-2),ns=new Float32Array(maxL+2);let mt=2*e;
+  for(let t=0;t<=maxL+1;t++){if(t>0)mt-=tdec[n-t]*tdec[n-t]+tdec[t-1]*tdec[t-1];let r=0;const lim=n-t;for(let j=0;j<lim;j++)r+=tdec[j]*tdec[j+t];ns[t]=mt>0?2*r/mt:0}
+  const peaks=[];let started=false,pos=false,cm=-1,ci=-1;
+  for(let t=1;t<=maxL;t++){const v=ns[t];if(!started){if(v<0)started=true;continue}if(v>0){if(!pos){pos=true;cm=-1}if(v>cm){cm=v;ci=t}}else if(pos){pos=false;peaks.push(ci)}}
+  if(pos&&ci>0)peaks.push(ci);if(!peaks.length)return{f:-1,rms};let g=0;for(const k of peaks)g=Math.max(g,ns[k]);
+  const T=peaks.find(k=>ns[k]>=0.9*g);if(T<minL||ns[T]<0.75)return{f:-1,rms};
+  const x1=ns[T-1],x2=ns[T],x3=ns[T+1],aa=(x1+x3-2*x2)/2,bb=(x3-x1)/2;const f0=sr/(aa<0?T-bb/(2*aa):T);
+  /* affina sulla fondamentale vera (le corde sono leggermente inarmoniche) */
+  try{const f1=tRefine(tbuf,f0);if(f1>0&&Math.abs(1200*Math.log2(f1/f0))<40)return{f:f1,rms}}catch(e){}
+  return{f:f0,rms}}
+let hannW=null;
+function tMag(b,fr){const w=2*Math.PI*fr/ac.sampleRate,cw=Math.cos(w),sw=Math.sin(w);let c=1,s=0,re=0,im=0;const n=b.length;for(let i=0;i<n;i++){const v=b[i]*hannW[i];re+=v*c;im-=v*s;const nc=c*cw-s*sw;s=s*cw+c*sw;c=nc}return re*re+im*im}
+function tPeak(b,f0,span,step){let best=f0,bm=-1;for(let c=-span;c<=span;c+=step){const fr=f0*Math.pow(2,c/1200),m=tMag(b,fr);if(m>bm){bm=m;best=fr}}return{f:best,m:bm}}
+function tRefine(b,f){if(!hannW||hannW.length!==b.length){hannW=new Float32Array(b.length);for(let i=0;i<b.length;i++)hannW[i]=0.5-0.5*Math.cos(2*Math.PI*i/(b.length-1))}
+  let p=tPeak(b,f,40,4);const p2=tPeak(b,2*f,40,4);if(p.m<0.05*p2.m)return tRefine2(b,p2.f)/2;
+  return tRefine2(b,p.f)}
+function tRefine2(b,f){const p=tPeak(b,f,4,0.5),c=0.5,ml=tMag(b,p.f*Math.pow(2,-c/1200)),mh=tMag(b,p.f*Math.pow(2,c/1200)),den=ml-2*p.m+mh;const d=den<0?(ml-mh)/(2*den):0;return p.f*Math.pow(2,(-d*c)/1200)}
+function tunerIdle(){$('gNeedle').setAttribute('class','gneedle');$('gNeedle').style.transform='rotate(0deg)';$('tstate').className='tstate';$('tstate').textContent='Suona una corda a vuoto';$('tcents').innerHTML='&nbsp;';$('fineM').style.opacity=0;[...$('strings').children].forEach(b=>b.classList.remove('ok'))}
+function tunerUpdate(f,rms,t){
+  if(rms>0.01&&rms>tSlow*1.8){tSkip=t+0.12;tHist=[]}
+  tSlow=tSlow*0.9+rms*0.1;
+  if(f<60||f>1400){if(++miss>20){tunerIdle();tEma=null}return}
+  if(t<tSkip)return;miss=0;
   const ms=tuningLow();let i=lockStr;
-  if(i==null){let best=1e9;ms.forEach((m,k)=>{const d=Math.abs(1200*Math.log2(ef/hz(m)));if(d<best){best=d;i=k}});
+  if(i==null){let best=1e9;ms.forEach((m,k)=>{const d=Math.abs(1200*Math.log2(f/hz(m)));if(d<best){best=d;i=k}});
+    if(autoStr!=null&&i!==autoStr&&Math.abs(1200*Math.log2(f/hz(ms[autoStr])))<150)i=autoStr;
     if(autoStr!==i){autoStr=i;drawStrings()}}
+  if(i!==tLastI){tHist=[];tEma=null;tLastI=i}
   setTarget(i);
-  const cents=1200*Math.log2(ef/hz(ms[i])),cc=Math.max(-50,Math.min(50,cents));
-  const ok=Math.abs(cents)<4;
-  $('bneedle').style.left=`${50+cc}%`;$('bneedle').style.background=ok?'var(--green)':'var(--warn)';
+  const raw=1200*Math.log2(f/hz(ms[i]));tHist.push(raw);if(tHist.length>7)tHist.shift();
+  const sorted=tHist.slice().sort((a,b)=>a-b),med=sorted[sorted.length>>1];
+  tEma=tEma==null?med:tEma+0.35*(med-tEma);const c=tEma,cc=Math.max(-50,Math.min(50,c));ef=f;
+  const perfect=Math.abs(c)<1.5,ok=Math.abs(c)<3;
+  const n=$('gNeedle');n.setAttribute('class','gneedle '+(ok?'ok':'off'));n.style.transform=`rotate(${(cc/50*60).toFixed(2)}deg)`;
+  $('tcents').textContent=`${c>0?'+':c<0?'−':''}${Math.abs(c).toFixed(1)} cent`;
+  const fm=$('fineM');fm.style.opacity=1;fm.style.left=`${50+Math.max(-10,Math.min(10,c))*5}%`;fm.className='fm'+(ok?' ok':'');
   const s=$('tstate');
-  if(ok){s.className='tstate ok';s.textContent='✓ Accordata'}
-  else if(cents<0){s.className='tstate lo';s.textContent=`Troppo bassa · tendi ▲ ${Math.round(-cents)} cent`}
-  else{s.className='tstate hi';s.textContent=`Troppo alta · allenta ▼ ${Math.round(cents)} cent`}
-  $('tfreq').textContent=`${ef.toFixed(1)} Hz → ${hz(ms[i]).toFixed(1)} Hz`;
+  if(perfect){s.className='tstate ok';s.textContent='✓ Perfetta'}
+  else if(ok){s.className='tstate ok';s.textContent='Accordata'}
+  else if(c<0){s.className='tstate lo';s.textContent=`Troppo bassa · tendi ▲`}
+  else{s.className='tstate hi';s.textContent=`Troppo alta · allenta ▼`}
+  $('tfreq').textContent=`${(hz(ms[i])*Math.pow(2,c/1200)).toFixed(2)} Hz → ${hz(ms[i]).toFixed(2)} Hz`;
   [...$('strings').children].forEach((b,k)=>b.classList.toggle('ok',ok&&k===i));
 }
 const tsel=$('tuning');for(const k in TUNINGS){const o=document.createElement('option');o.value=k;o.textContent=TUNINGS[k].n;tsel.appendChild(o)}
@@ -866,7 +934,7 @@ const exOn=()=>!!(window.QC&&QC.exRunning());
 function listen(){if(!analyser)return;requestAnimationFrame(listen);if(++frame%(exOn()?1:(tunerOn?2:3)))return;
   analyser.getFloatTimeDomainData(buf);const f=autoCorrelate(buf,ac.sampleRate);vu(pd.rms);
   if(exOn()){QC.exFeed(f,pd,ac.currentTime);return}
-  if(tunerOn){tunerUpdate(f);return}
+  if(tunerOn){const tp=tunerPitch();tunerUpdate(tp.f,tp.rms,ac.currentTime);return}
   if(f<60||f>1400){last=[];return}
   const mf=69+12*Math.log2(f/a4),m=Math.round(mf),cents=(mf-m)*100;
   last.push(m);if(last.length>3)last.shift();
