@@ -1518,15 +1518,18 @@ function startPrompt(x,a){const pool=x.pool.slice(),q=[];let lastM=null;
     showPrompt();clearTimeout(r.to);r.to=setTimeout(()=>timeout(),x.limit*1000)};
   const timeout=()=>{const r=run;if(!r||r.okAt)return;const p=r.q[r.i];r.res.push({p,ok:false,tries:r.tries,wrongs:r.wrongs});reveal(p,false);setTimeout(next,1300)};
   run.answer=m=>{const r=run;if(!r||r.i<0||r.okAt||r.i>=r.q.length)return;const p=r.q[r.i];
-    if(m===p.m){r.okAt=QC.audio().currentTime;clearTimeout(r.to);r.res.push({p,ok:true,time:r.okAt-r.t,tries:r.tries,wrongs:r.wrongs});reveal(p,true);setTimeout(next,750)}
+    const samePc=((m-p.m)%12+12)%12===0;
+    const okF=x.type==='finder'?(samePc&&m>=STD[p.s]&&m<=STD[p.s]+12):samePc;
+    if(okF){r.okAt=QC.audio().currentTime;clearTimeout(r.to);r.res.push({p,ok:true,time:r.okAt-r.t,tries:r.tries,wrongs:r.wrongs,oct:m!==p.m});
+      const shown=x.type==='finder'?{s:p.s,f:m-STD[p.s],m}:p;reveal(shown,true);if(x.type==='ear'&&m!==p.m)$('pMsg').textContent=`Giusto! Era la stessa nota, ${m<p.m?'un’ottava più in alto':'un’ottava più in basso'} di come l’hai suonata.`;setTimeout(next,x.type==='ear'&&m!==p.m?1400:750)}
     else{r.tries++;r.wrongs.push(m);flash(m,p)}};
   run.feed=noteDet(m=>run&&run.answer(m));
   const showPrompt=()=>{const r=run,p=r.q[r.i];
-    const head=x.type==='ear'?`Ascolta e trova la nota <span class="small muted">· ${x.area}</span>`:`Trova il <b>${nn(p.m)}</b> sulla <b>${p.s}ª corda</b>`;
+    const head=x.type==='ear'?`Ascolta e trova la nota <span class="small muted">· ${x.area} · va bene in qualsiasi ottava</span>`:`Trova il <b>${nn(p.m)}</b> sulla <b>${p.s}ª corda</b> <span class="small muted">· tra il tasto 0 e il 12</span>`;
     drawStatic({hiString:x.type==='finder'?p.s:null,marks:[],html:progressChips()});
     $('pNow').innerHTML=`${head} <span class="cnt small">${r.i+1}/${r.q.length}</span>${x.type==='ear'?' <button class="btn small" id="pReplay">Riascolta</button>':''}`;
     const rb=$('pReplay');if(rb)rb.onclick=()=>QC.pluck(p.m)};
-  const flash=(m,p)=>{const near=m%12===p.m%12?'Nome giusto, ma ottava sbagliata: cambia corda.':x.type==='ear'?(m<p.m?'Più acuta.':'Più grave.'):`Quello è ${nn(m)}.`;
+  const flash=(m,p)=>{const near=m%12===p.m%12?`Nome giusto, ma quel ${nn(m)} è fuori dalla ${p.s}ª corda tra il tasto 0 e il 12: cercalo lì.`:x.type==='ear'?(m<p.m?'Più acuta.':'Più grave.'):`Quello è ${nn(m)}.`;
     $('pMsg').textContent=near};
   const reveal=(p,ok)=>{drawStatic({hiString:x.type==='finder'?p.s:null,marks:[{s:p.s,f:p.f,label:nn(p.m),cls:ok?'okd':'badd'}],html:progressChips()});$('pMsg').textContent=ok?'Giusto.':`Era qui: ${nn(p.m)}, ${pos(p)}.`};
   const progressChips=()=>run.q.map((p,i)=>{const z=run.res[i];return `<span class="chip${z?(z.ok?' ok':' wrong'):i===run.i?' cur':''}">${i<run.res.length||x.type==='finder'?nn(p.m):'?'}</span>`}).join('');
