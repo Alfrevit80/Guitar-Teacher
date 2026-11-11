@@ -518,7 +518,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <div class="report" id="pRep" hidden>
         <div class="grade"><div class="score" id="pScore"></div><div><div class="verdict" id="pVerdict"></div><div class="small muted" id="pStats"></div></div></div>
         <div class="teacher" id="pText"></div>
-        <div class="row"><button class="btn" id="pRetry">Riprova</button><button class="btn" id="pAlt" hidden></button><button class="btn" id="pCalBtn" hidden>Calibra il ritardo</button><button class="btn on" id="pNext">Avanti</button></div>
+        <div class="row"><button class="btn" id="pRetry">Riprova</button><button class="btn" id="pAlt" hidden></button><button class="btn" id="pDrill" hidden></button><button class="btn" id="pCalBtn" hidden>Calibra il ritardo</button><button class="btn on" id="pNext">Avanti</button></div>
       </div>
     </div>
     <div id="pTest" hidden>
@@ -1136,12 +1136,19 @@ const LEVELS=[
 ]}
 ];
 const ITEMS={},LESSONS=[];
-LEVELS.forEach((lv,li)=>lv.lessons.forEach(L=>{L.level=li;L.idx=LESSONS.length;LESSONS.push(L);L.items.forEach(x=>{x.lesson=L;ITEMS[x.id]=x;
+function normItem(x){
   if(x.type==='seq')x.notes=x.seq.map(([s,f])=>({s,f,m:STD[s]+f,d:f===0?0:((x.fmap&&x.fmap[s+'-'+f])||(f-x.pos+1))}));
-  if(x.type==='chord'){x.chords=[];for(let b=0;b<x.bars;b++)x.chords.push(x.prog[Math.floor(b/x.per)%x.prog.length])}
+  if(x.type==='chord'){x.chords=[];for(let b=0;b<x.bars;b++)x.chords.push(x.prog[Math.floor(b/(x.per||1))%x.prog.length])}
   if(x.type==='improv'){x.chords=[];for(let b=0;b<x.bars;b++)x.chords.push(x.prog[b%x.prog.length])}
-})}));
-const TYPE=x=>x.type==='seq'?'Note':x.type==='chord'?(x.pat==='q4'||x.pat==='w'?'Accordi':'Ritmo'):x.type==='finder'?'Tastiera':x.type==='ear'?'Orecchio':'Assolo';
+  return x}
+LEVELS.forEach((lv,li)=>lv.lessons.forEach(L=>{L.level=li;L.idx=LESSONS.length;LESSONS.push(L);L.items.forEach(x=>{x.lesson=L;ITEMS[x.id]=x;normItem(x)})}));
+/* esercizi mirati: nascono dai punti deboli quando un esercizio resta fermo tra 60 e 79 */
+let DRILLS=ls.get('L_drills',{});
+function regDrill(d){const b=ITEMS[d.base];if(!b)return null;const x=normItem(Object.assign({},d,{lesson:b.lesson,drill:true}));ITEMS[x.id]=x;return x}
+Object.values(DRILLS).forEach(regDrill);
+const drillOf=id=>DRILLS['drill-'+id]?ITEMS['drill-'+id]:null;
+const drillActive=id=>{const d=drillOf(id);return d&&!(S[d.id]&&S[d.id].best>=80)?d:null};
+const TYPE=x=>x.drill?'Mirato':x.type==='seq'?'Note':x.type==='chord'?(x.pat==='q4'||x.pat==='w'?'Accordi':'Ritmo'):x.type==='finder'?'Tastiera':x.type==='ear'?'Orecchio':'Assolo';
 
 /* ================= STATO ================= */
 let S=ls.get('L_items',{});
@@ -1155,22 +1162,46 @@ const lessonDone=L=>L.items.every(x=>st(x.id).passed);
 const curLesson=()=>LESSONS.find(L=>!lessonDone(L))||LESSONS[LESSONS.length-1];
 const unlocked=L=>L.idx<=curLesson().idx;
 const workBpm=x=>st(x.id).bpm||x.bpm;
-function record(x,score,bpm){const s=st(x.id),now=Date.now();
+function record(x,score,bpm,R){const s=st(x.id),now=Date.now();
   s.n++;s.best=Math.max(s.best,score);s.last=s.last.concat(score).slice(-12);s.when=now;
-  let msg;const T=x.target,step=x.step||6;
+  let msg;const T=x.target,step=x.step||6;const nd=n=>`${n} ${n===1?'giorno':'giorni'}`;
   if(score>=70)s.passed=true;
   if(bpm!=null){
-    if(score>=85){if(bpm>=T){s.box=Math.min(6,s.box+1);s.bpm=T;msg=`Obiettivo raggiunto a ${T} bpm: lo ripassiamo tra ${INTERVAL[s.box]} ${INTERVAL[s.box]===1?'giorno':'giorni'}.`}
+    if(score>=80){if(bpm>=T){s.box=Math.min(6,s.box+1);s.bpm=T;msg=`Obiettivo raggiunto a ${T} bpm: lo ripassiamo tra ${nd(INTERVAL[s.box])}.`}
       else{s.bpm=Math.min(T,bpm+step);msg=`Pulito: la prossima volta lo suoniamo a ${s.bpm} bpm (obiettivo ${T}).`}}
-    else if(score>=60){s.bpm=bpm;msg=`Lo ripetiamo a ${bpm} bpm finché non supera 85.`}
+    else if(score>=70){if(bpm>=T){if(score>=75){s.box=Math.min(6,s.box+1);msg=`Al tempo obiettivo e sopra 75: va bene così, lo ripassiamo tra ${nd(INTERVAL[s.box])} e intanto andiamo avanti.`}else msg=`Sei già al tempo obiettivo: intanto andiamo avanti, lo ripassiamo presto.`;s.bpm=T}
+      else{s.bpm=Math.min(T,bpm+2);msg=`Superato: andiamo avanti. Il tempo sale piano, la prossima volta ${s.bpm} bpm.`}}
+    else if(score>=60){s.bpm=bpm;msg=`Lo rifacciamo a ${bpm} bpm.`}
     else{s.bpm=Math.max(40,Math.round(bpm*0.9/2)*2);s.box=Math.max(0,s.box-1);msg=`La prossima volta scendiamo a ${s.bpm} bpm: la velocità arriva dopo la precisione.`}
   }else{
-    if(score>=85){s.box=Math.min(6,s.box+1);msg=`Molto bene: lo ripassiamo tra ${INTERVAL[s.box]} ${INTERVAL[s.box]===1?'giorno':'giorni'}.`}
+    if(score>=80){s.box=Math.min(6,s.box+1);msg=`Molto bene: lo ripassiamo tra ${nd(INTERVAL[s.box])}.`}
+    else if(score>=70)msg='Superato: andiamo avanti, lo ripassiamo presto.';
     else if(score>=60)msg='Lo ripetiamo nella prossima lezione.';
     else{s.box=Math.max(0,s.box-1);msg='Lo rifacciamo presto, con calma.'}}
-  s.due=now+INTERVAL[s.box]*DAY-3600e3;saveS();
+  s.due=now+INTERVAL[s.box]*DAY-3600e3;
+  /* punti deboli */
+  if(R&&R.weak){s.weak=(s.weak||[]).slice(0,R.weak.length);R.weak.forEach((w,i)=>s.weak[i]=(s.weak[i]||0)*0.6+w)}
+  if(R&&R.weakPair){s.wp=s.wp||{};const k=R.weakPair.join('>');Object.keys(s.wp).forEach(z=>s.wp[z]*=0.6);s.wp[k]=(s.wp[k]||0)+1}
+  if(R&&R.badChord){s.bc=s.bc||{};s.bc[R.badChord]=(s.bc[R.badChord]||0)+1}
+  saveS();
+  if(!x.drill&&score<80){const rec=s.last.slice(-3);if(rec.length===3&&rec.every(v=>v>=60&&v<80)){const d=makeDrill(x,s);if(d)msg+=` Sei fermo poco sotto 80 da tre prove: ti ho preparato un esercizio mirato, «${d.t}», sul punto che ti fa perdere più punti. Lo trovi qui sotto e nella prossima lezione.`}}
+  if(x.drill&&score>=80)msg+=' Punto debole sistemato: ora riprova l’esercizio completo.';
   if(SESS){SESS.done[x.id]=Math.max(SESS.done[x.id]||0,score);SESS.scores.push([x.id,score]);saveSess()}
   return msg}
+function makeDrill(x,s){const id='drill-'+x.id,b=Math.max(40,(s.bpm||x.bpm)-8);let d=null;
+  if(x.type==='seq'&&s.weak&&s.weak.length){const n=x.notes.length,w=Math.min(4,n);let bi=0,bv=-1;
+    for(let i=0;i+w<=n;i++){let v=0;for(let k=i;k<i+w;k++)v+=s.weak[k]||0;if(v>bv){bv=v;bi=i}}
+    if(bv<=0)return null;const part=x.seq.slice(bi,bi+w);const seq=part.concat(part,part);
+    const names=x.notes.slice(bi,bi+w).map(p=>nn(p.m)).join(' ');
+    d={id,base:x.id,t:`Mirato: ${names}`,type:'seq',seq,pos:x.pos,fmap:x.fmap,sub:x.sub,step:4,bpm:b,target:s.bpm||x.bpm,
+       d:`Il passaggio di «${x.t}» dove perdi più punti (note ${bi+1}–${bi+w}), ripetuto tre volte, più lento.`,tip:x.tip}}
+  else if(x.type==='chord'){let pair=null,bv=0;Object.entries(s.wp||{}).forEach(([k,v])=>{if(v>bv){bv=v;pair=k.split('>')}});
+    if(pair)d={id,base:x.id,t:`Mirato: cambio ${chl(pair[0])} → ${chl(pair[1])}`,type:'chord',prog:pair,bars:8,per:1,pat:x.pat==='q4'?'q4':x.pat,step:4,bpm:b,target:s.bpm||x.bpm,
+       d:`Solo il cambio che ti rallenta, avanti e indietro per otto battute, più lento. Sposta tutte le dita insieme, già sull’ultimo colpo della battuta.`};
+    else{let k=null,cv=0;Object.entries(s.bc||{}).forEach(([c,v])=>{if(v>cv){cv=v;k=c}});
+      if(k)d={id,base:x.id,t:`Mirato: accordo di ${chl(k)}`,type:'chord',prog:[k],bars:4,per:1,pat:'q4',step:4,bpm:b,target:s.bpm||x.bpm,d:`Solo l’accordo che non suona pulito, quattro battute. Prima di partire pizzica le corde una a una.`}}}
+  else if(x.type==='finder'||x.type==='ear'){return null}
+  if(!d)return null;DRILLS[id]=d;ls.set('L_drills',DRILLS);if(S[id]){S[id].best=0;S[id].last=[];saveS()}return regDrill(d)}
 
 /* ================= PIANO DELLA LEZIONE ================= */
 function daysSince(){if(!DIARY.length)return null;return Math.floor((startOfDay(Date.now())-startOfDay(Math.max(...DIARY.map(d=>d.d))))/DAY)}
@@ -1201,8 +1232,9 @@ function buildPlan(dur){
   if(gap!=null&&gap>=5){m.r+=3;m.n-=3}
   const blocks=[];
   if(warm)blocks.push({k:'warm',name:'Riscaldamento',min:m.w,items:[warm]});
-  if(rev.length)blocks.push({k:'rev',name:'Ripasso',min:m.r,items:rev.map(x=>x.id)});
-  blocks.push({k:'new',name:'Nuovo · '+L.t,min:m.n+(rev.length?0:m.r)+(warm?0:m.w),items:neu.map(x=>x.id)});
+  const wd=list=>list.flatMap(x=>{const d=drillActive(x.id);return d?[d.id,x.id]:[x.id]});
+  if(rev.length)blocks.push({k:'rev',name:'Ripasso',min:m.r,items:wd(rev)});
+  blocks.push({k:'new',name:'Nuovo · '+L.t,min:m.n+(rev.length?0:m.r)+(warm?0:m.w),items:wd(neu)});
   if(music)blocks.push({k:'music',name:music.startsWith('imp')?'Musica · assolo':music==='earOpen'?'Gioco d’orecchio':'Musica',min:m.m,items:[music]});
   return {lesson:L.id,blocks}}
 
@@ -1465,7 +1497,8 @@ function evalSeq(r){const x=r.x,tol=Math.min(0.07,r.iv*0.3),w=Math.max(0.12,r.iv
   if(miss.length)L.push(`${miss.length===1?'Una nota non l’ho sentita':miss.length+' note non le ho sentite'} (${miss.slice(0,4).map(i=>i+1+'ª').join(', ')}${miss.length>4?'…':''}). Pizzica con decisione e lascia suonare ogni nota fino alla successiva.`);
   const tl=timingLine(mean,sd,ds.length);if(tl)L.push(tl);
   if(score<85&&x.tip)L.push(x.tip);
-  return {score,st:st2,lines:L,stats:`${good}/${N} note giuste · regolarità ±${Math.round(sd*1000)} ms · ${r.bpm} bpm`,heard:r.events.length}}
+  const weak=st2.map(v=>v==='ok'?0:v==='timing'?0.5:1);
+  return {score,st:st2,weak,lines:L,stats:`${good}/${N} note giuste · regolarità ±${Math.round(sd*1000)} ms · ${r.bpm} bpm`,heard:r.events.length}}
 function evalChord(r){const x=r.x,ev=PAT[x.pat].ev,sp=ev.length>1?Math.min(...ev.slice(1).map((e,i)=>e[0]-ev[i][0]))*r.beat:4*r.beat;
   const w=Math.min(0.22,0.48*sp),tol=Math.min(0.07,0.3*sp);
   const M=matchTimes(r.exp,r.ons.map(t=>({t})),w,tol);const ds=[];let hits=0,ups=0,upMiss=0;
@@ -1483,12 +1516,14 @@ function evalChord(r){const x=r.x,ev=PAT[x.pat].ev,sp=ev.length>1?Math.min(...ev
   const ch={};for(let b=1;b<x.bars;b++){if(x.chords[b]===x.chords[b-1])continue;const key=chl(x.chords[b-1])+' → '+chl(x.chords[b]);ch[key]=ch[key]||{n:0,late:0};ch[key].n++;
     const i=r.exp.findIndex(e=>e.bar===b&&e.first);const z=M[i];if(!z||z.d>mean+0.07||(okBars[b-1]&&!okBars[b]))ch[key].late++}
   const worst=Object.entries(ch).filter(([k,v])=>v.late/v.n>=0.5).sort((a,b)=>b[1].late/b[1].n-a[1].late/a[1].n)[0];
+  let weakPair=null;if(worst){for(let b=1;b<x.bars;b++){if(chl(x.chords[b-1])+' → '+chl(x.chords[b])===worst[0]){weakPair=[x.chords[b-1],x.chords[b]];break}}}
+  const badChord=Object.keys(bad).sort((a,b)=>bad[b]-bad[a])[0]||null;
   if(worst)L.push(`Il cambio ${worst[0]} è il punto debole: muovi le dita già sull’ultimo colpo della battuta prima. Meglio un colpo a vuoto che arrivare tardi sull’uno.`);
   else if(Object.keys(ch).length&&score>=70)L.push('I cambi sono puntuali: ottimo.');
   if(ups>=4&&upMiss/ups>0.35)L.push('Le pennate in su le sento poco: falle più decise, anche solo sulle corde più sottili.');
   if(hitR<0.5&&hits>0)L.push('Molte pennate non le ho sentite a tempo: la mano destra non si ferma mai, anche durante il cambio.');
   const tl=timingLine(mean,sd,ds.length);if(tl)L.push(tl);
-  return {score,bst,lines:L,stats:`${hits}/${N} pennate · ${okBars.filter(Boolean).length}/${x.bars} battute pulite · ±${Math.round(sd*1000)} ms · ${r.bpm} bpm`,heard:r.ons.length+measured.length}}
+  return {score,bst,weakPair,badChord,lines:L,stats:`${hits}/${N} pennate · ${okBars.filter(Boolean).length}/${x.bars} battute pulite · ±${Math.round(sd*1000)} ms · ${r.bpm} bpm`,heard:r.ons.length+measured.length}}
 function evalPrompt(r){const x=r.x,n=r.q.length,ok=r.res.filter(z=>z.ok),tAvg=ok.length?ok.reduce((a,z)=>a+z.time,0)/ok.length:x.limit;
   const acc=ok.length/n,spd=Math.max(0,Math.min(1,(x.limit-tAvg)/(x.limit-1.5)));const score=Math.round(100*(0.7*acc+0.3*acc*spd));
   const L=[`${opener(score)} Hai trovato ${ok.length} note su ${n}${ok.length?`, in media in ${fmtN(tAvg)} secondi`:''}.`];
@@ -1521,15 +1556,17 @@ function finish(){const r=run;if(!r)return;r.seq&&r.seq.stop();clearTimeout(r.to
   $('pRep').hidden=false;$('pNow').textContent='';
   if(!R.heard){$('pScore').textContent='–';$('pScore').style.color='';$('pVerdict').textContent='Non ho sentito niente';$('pStats').textContent='';
     kbFocus('pRetry');$('pText').innerHTML='<p>Nessun suono rilevato. Controlla che l’ingresso sia attivo e che il volume della scheda audio non sia a zero.</p>';$('pAlt').hidden=true;setNext();return}
-  const msg=record(x,R.score,(x.type==='seq'||x.type==='chord'||x.type==='improv')?r.bpm:null);
+  const msg=record(x,R.score,(x.type==='seq'||x.type==='chord'||x.type==='improv')?r.bpm:null,R);
   $('pScore').innerHTML=`${R.score}<small>/100</small>`;$('pScore').style.color=R.score>=85?'var(--green)':R.score>=60?'var(--warn)':'var(--red)';
   $('pVerdict').textContent=verdict(R.score);$('pStats').textContent=R.stats;
   $('pText').innerHTML=R.lines.concat(msg).map(t=>`<p>${t}</p>`).join('')+'<p class="sign">— il maestro</p>';
   const nb=st(x.id).bpm;$('pAlt').hidden=!(nb&&nb!==r.bpm);if(nb&&nb!==r.bpm){$('pAlt').textContent=`Riprova a ${nb} bpm`;$('pAlt').dataset.b=nb}
   $('pCalBtn').hidden=!(R.lines.some(t=>/calibrazione del ritardo/.test(t)));
+  {const dr=x.drill?ITEMS[x.base]:drillActive(x.id);$('pDrill').hidden=!dr;if(dr){$('pDrill').textContent=x.drill?'Torna all’esercizio completo':'Fai l’esercizio mirato';$('pDrill').dataset.id=dr.id}}
   setNext();renderSide();const s2=st(x.id);$('pBest').textContent=`Record ${s2.best} · ${s2.n} ${s2.n===1?'prova':'prove'}`;try{$('pRep').scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}kbFocus('pRetry')}
 function setNext(){const n=nextTarget();$('pNext').hidden=!n;if(n)$('pNext').textContent=n.label}
-function nextTarget(){if(TEST&&TEST.active)return{label:'Continua il test',go:testNext};if(SESS&&ctxB){const b=SESS.blocks[SESS.bi];if(SESS.ii+1<b.items.length)return{label:'Esercizio successivo',go:()=>{SESS.ii++;saveSess();openItem(b.items[SESS.ii],true)}};
+function nextTarget(){if(TEST&&TEST.active)return{label:'Continua il test',go:testNext};
+  if(cur&&cur.drill&&!(SESS&&ctxB))return{label:'Esercizio completo',go:()=>openItem(cur.base)};if(SESS&&ctxB){const b=SESS.blocks[SESS.bi];if(SESS.ii+1<b.items.length)return{label:'Esercizio successivo',go:()=>{SESS.ii++;saveSess();openItem(b.items[SESS.ii],true)}};
     if(SESS.bi+1<SESS.blocks.length)return{label:`Avanti: ${SESS.blocks[SESS.bi+1].name.split(' · ')[0]}`,go:()=>{SESS.bi++;SESS.ii=0;saveSess();openItem(SESS.blocks[SESS.bi].items[0],true)}};
     return{label:'Concludi la lezione',go:endSession}}
   const L=cur.lesson,i=L.items.indexOf(cur);if(i+1<L.items.length)return{label:'Esercizio successivo',go:()=>openItem(L.items[i+1].id)};
@@ -1597,7 +1634,7 @@ function renderPerc(){const box=$('sidePerc'),C=curLesson();let h='';
     h+=`<div class="lvl"><div class="lvh"><span class="mono muted">Livello ${li+1}</span><span>${esc(lv.n)}</span><span class="small muted">${done}/${lv.lessons.length}</span></div>`;
     lv.lessons.forEach(L=>{const d=lessonDone(L),c=L===C,u=unlocked(L);
       h+=`<details class="les${c?' cur':''}${u?'':' locked'}"${c||(cur&&cur.lesson===L)?' open':''}><summary><span class="li${d?' d':c?' c':''}">${d?'✓':L.idx+1}</span>${esc(L.t)}</summary>
-       ${L.items.map(x=>{const s=st(x.id);return `<button class="pitem${cur&&cur.id===x.id?' on':''}" data-id="${x.id}"><span class="ck${s.n?(s.best>=85?' g':s.best>=60?' w':' r'):''}">${s.n?s.best:''}</span><span>${esc(x.t)}<i>${TYPE(x)}${s.box?' · '+'●'.repeat(Math.min(4,s.box)):''}</i></span></button>`}).join('')}</details>`});
+       ${L.items.flatMap(x=>{const d=drillOf(x.id);return d?[x,d]:[x]}).map(x=>{const s=st(x.id);return `<button class="pitem${cur&&cur.id===x.id?' on':''}" data-id="${x.id}"><span class="ck${s.n?(s.best>=85?' g':s.best>=60?' w':' r'):''}">${s.n?s.best:''}</span><span>${esc(x.t)}<i>${TYPE(x)}${s.box?' · '+'●'.repeat(Math.min(4,s.box)):''}</i></span></button>`}).join('')}</details>`});
     h+='</div>'});
   const last=DIARY.slice(-5).reverse();
   h+=`<button class="link" id="redoTest">${ls.get('L_place',null)?'Rifai il test d’ingresso':'Hai già suonato? Fai il test d’ingresso'}</button>`;
@@ -1657,7 +1694,7 @@ function openProbe(){const id=TEST.queue[TEST.qi],p=PROBES[TEST.cur].find(z=>z.i
   $('pMsg').textContent=(QC.hasInput()?'':'Attiva l’ingresso. ')+'Prova del test: suonalo come ti viene, senza riscaldarti prima. Puoi ascoltare l’esempio.'}
 function testNext(){const id=TEST.queue[TEST.qi];if(TEST.res[id]==null)TEST.res[id]=0;TEST.qi++;saveTest();
   if(TEST.qi<TEST.queue.length){openProbe();return}
-  const k=TEST.cur,pass=TEST.queue.every(z=>(TEST.res[z]||0)>=70);TEST.tested[k]=pass;
+  const k=TEST.cur,pass=TEST.queue.every(z=>(TEST.res[z]||0)>=60);TEST.tested[k]=pass;
   let nx=null;if(pass){if(k+1<5&&TEST.tested[k+1]==null)nx=k+1}else if(k-1>=0&&TEST.tested[k-1]==null)nx=k-1;
   if(nx!=null){testLevel(nx);return}
   const ks=Object.keys(TEST.tested).map(Number),failed=ks.filter(k=>!TEST.tested[k]),passed=ks.filter(k=>TEST.tested[k]);
@@ -1677,7 +1714,7 @@ function applyPlacement(P,src,T){const now=Date.now();let i=0;TEST=null;saveTest
   if(src==='test'){
     if(P===0)P2.push('Il primo livello va ancora consolidato: nessun problema, dopo un anno di pausa è normale. Lo rifaremo velocemente, saltando quello che ti viene subito bene.');
     else P2.push(`Hai superato le prove fino al livello ${P}. Le lezioni di quei livelli le ho segnate come già fatte.`);
-    const weak=T&&T.tested[P]===false?PROBES[P].filter(p=>(T.res[p.id]||0)<70).map(p=>`«${ITEMS[p.id].t}»`):[];
+    const weak=T&&T.tested[P]===false?PROBES[P].filter(p=>(T.res[p.id]||0)<60).map(p=>`«${ITEMS[p.id].t}»`):[];
     if(weak.length)P2.push(`Nel livello ${P+1} mi è sembrato più incerto ${weak.join(' e ')}: è da lì che partiamo.`)}
   else P2.push(P?`In base alle tue risposte ho segnato come già fatti i primi ${P} livelli. Se qualcosa ti sembra troppo facile o troppo difficile, rifai il test con la chitarra collegata dalla sezione Percorso.`:'In base alle tue risposte partiamo dalle fondamenta: andremo veloci su quello che ricordi.');
   if(P>0)P2.push('Nelle prossime lezioni il ripasso ti farà rivedere, poche alla volta, gli esercizi dei livelli già fatti: servono a togliere la ruggine. Se li suoni bene spariscono per un po’, se fai fatica tornano più spesso.');
@@ -1687,7 +1724,7 @@ function applyPlacement(P,src,T){const now=Date.now();let i=0;TEST=null;saveTest
 $('tStart').onclick=()=>startSession(SET.dur);
 
 /* ---------- pulsanti player ---------- */
-$('pCalBtn').onclick=openCal;$('pCalHdr').onclick=openCal;
+$('pDrill').onclick=()=>openItem($('pDrill').dataset.id);$('pCalBtn').onclick=openCal;$('pCalHdr').onclick=openCal;
 $('pStart').onclick=start;$('pDemo').onclick=playDemo;$('pMetro').onclick=metroToggle;
 $('pMinus').onclick=()=>{if(run||demo)return;bpm=Math.max(40,bpm-4);$('pBpm').textContent=bpm};
 $('pPlus').onclick=()=>{if(run||demo)return;bpm=Math.min(200,bpm+4);$('pBpm').textContent=bpm};
