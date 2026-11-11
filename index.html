@@ -1603,22 +1603,47 @@ function evalPrompt(r){const x=r.x,n=r.q.length,ok=r.res.filter(z=>z.ok),tAvg=ok
   if(r.res.some(z=>z.wrongs.some(m=>m%12===z.p.m%12&&m!==z.p.m)))L.push('In qualche caso avevi la nota giusta all’ottava sbagliata: va bene, l’orecchio c’era.');
   if(score<85&&x.tip)L.push(x.tip);
   return {score,lines:L,stats:`${ok.length}/${n} giuste · ${fmtN(tAvg)} s in media`,heard:r.res.length}}
-function evalImprov(r){const x=r.x,N=r.notes.length,beat=r.beat;
-  if(N<4)return {score:N?20:0,lines:[N?'Hai suonato pochissime note: non avere paura di sbagliare, sulla base ogni nota della pentatonica funziona.':'Non ho sentito note.'],stats:`${N} note`,heard:N};
-  const inS=r.notes.filter(z=>x.scale.includes(((z.m%12)+12)%12)).length/N;
-  const chordAt=t=>x.chords[Math.max(0,Math.min(x.bars-1,Math.floor((t-r.t0)/(4*beat))))];
-  const ends=[];for(let i=0;i<N;i++){const nx=r.notes[i+1];if(!nx||nx.t-r.notes[i].t>1.2*beat)ends.push(r.notes[i])}
-  const fitEnd=ends.filter(z=>SH[chordAt(z.t)].pcs.includes(z.m%12)).length/ends.length;
-  const perBar=N/x.bars,phr=ends.length;const phraseQ=Math.max(0,Math.min(1,phr/(x.bars/2)))*(perBar>12?0.6:1);
-  const roots=r.notes.filter(z=>z.m%12===x.root).length;
-  const score=Math.round(100*(0.5*inS+0.25*fitEnd+0.25*phraseQ));
-  const L=[`${opener(score)} Hai suonato ${N} note in ${phr} ${phr===1?'frase':'frasi'}.`];
-  L.push(inS>=0.9?'Sei rimasto quasi sempre dentro la scala: bene.':`Il ${Math.round((1-inS)*100)}% delle note era fuori dalla pentatonica: resta nella forma tra il 5° e l’8° tasto.`);
-  if(phr<x.bars/4)L.push('Hai suonato quasi senza pause: prova frasi più brevi, poi lascia respirare la base per una battuta.');
-  else if(perBar>10)L.push('Molte note e veloci: prova a dirne meno, ma più cantabili.');
-  L.push(fitEnd>=0.6?'Le frasi chiudevano spesso su note dell’accordo: è questo che le fa suonare «giuste».':'Le frasi chiudevano spesso su note che stridono con l’accordo: prova a fermarti sul La, o sulla nota che dà il nome all’accordo.');
-  if(!roots)L.push('Non ho sentito nessun La: usalo come casa base.');
-  return {score,lines:L,stats:`${N} note · ${Math.round(inS*100)}% nella scala · ${phr} frasi · ${r.bpm} bpm`,heard:N}}
+function evalImprov(r){const x=r.x,beat=r.beat,notes=r.notes.slice().sort((a,b)=>a.t-b.t),N=notes.length;
+  if(N<4)return {score:N?15:0,lines:[N?'Hai suonato pochissime note: sulla base ogni nota della pentatonica funziona, non avere paura di sbagliare.':'Non ho sentito note.'],stats:`${N} note`,heard:N};
+  const pc=m=>((m%12)+12)%12,bar=t=>Math.max(0,Math.min(x.bars-1,Math.floor((t-r.t0)/(4*beat)))),chordAt=t=>x.chords[bar(t)];
+  /* 1. note nella scala */
+  const inS=notes.filter(z=>x.scale.includes(pc(z.m))).length/N;
+  /* 2. ritmo: le note cadono sulla griglia (crome o terzine)? */
+  const tol=Math.min(0.04,beat*0.1),onG=g=>notes.filter(z=>{const u=(z.t-r.t0)/g;return Math.abs(u-Math.round(u))*g<tol}).length/N;
+  const rhythmQ=Math.max(onG(beat/2),onG(beat/3));
+  /* 3. frasi: gruppi separati da almeno un movimento di pausa */
+  const phrases=[];let curP=[notes[0]];for(let i=1;i<N;i++){if(notes[i].t-notes[i-1].t>1.0*beat){phrases.push(curP);curP=[]}curP.push(notes[i])}phrases.push(curP);
+  const goodLen=phrases.filter(p=>p.length>=2&&p.length<=10).length/phrases.length;
+  const wantPh=Math.max(2,x.bars/3),phraseQ=goodLen*Math.min(1,phrases.length/wantPh);
+  /* 4. arrivi: fine frase e note sull'1 dei cambi di accordo sono note dell'accordo? */
+  const land=[];phrases.forEach(p=>land.push(p[p.length-1]));
+  for(let b=1;b<x.bars;b++){if(x.chords[b]===x.chords[b-1])continue;const tb=r.t0+b*4*beat;const z=notes.find(n=>Math.abs(n.t-tb)<0.3*beat);if(z)land.push(z)}
+  const landOk=land.filter(z=>SH[chordAt(z.t)].pcs.includes(pc(z.m)));const landQ=land.length?landOk.length/land.length:0;
+  /* 5. scala meccanica: lunghe corse su e giù per gradi */
+  const sc=[];for(let m=36;m<=96;m++)if(x.scale.includes(pc(m)))sc.push(m);const idx=m=>{let bi=0,bd=99;sc.forEach((v,i)=>{if(Math.abs(v-m)<bd){bd=Math.abs(v-m);bi=i}});return bi};
+  let mech=0,run=1,dir=0;for(let i=1;i<N;i++){const d=idx(notes[i].m)-idx(notes[i-1].m);const sd=Math.abs(d)===1?Math.sign(d):0;
+    if(sd&&sd===dir)run++;else{if(run>=5)mech+=run;run=sd?2:1;dir=sd}}if(run>=5)mech+=run;
+  const mechQ=1-Math.min(1,mech/N*1.3);
+  /* 6. presenza e varietà */
+  const barsWith=new Set(notes.map(z=>bar(z.t))).size,cov=barsWith/x.bars;const distinct=new Set(notes.map(z=>z.m)).size;
+  const perBar=N/x.bars;const dens=perBar>14?0.6:perBar<0.8?0.6:1;
+  let score=100*(0.2*inS+0.25*rhythmQ+0.25*landQ+0.2*phraseQ+0.1*mechQ)*Math.min(1,cov/0.6)*dens*(distinct<4?0.7:1)*(phrases.length<=2?0.85:1)*(mechQ<0.5?0.85:1);
+  score=Math.round(Math.max(0,Math.min(100,score)));
+  /* giudizio: prima i punti deboli più importanti */
+  const L=[`${opener(score)} Hai suonato ${N} note in ${phrases.length} ${phrases.length===1?'frase':'frasi'}.`];const W=[];
+  if(cov<0.6)W.push([1-cov,`Hai suonato solo in ${barsWith} battute su ${x.bars}: l’assolo deve accompagnare tutto il giro, con pause brevi tra le frasi, non lunghi silenzi.`]);
+  if(inS<0.85)W.push([1-inS,`Il ${Math.round((1-inS)*100)}% delle note era fuori dalla pentatonica di La: resta nella forma tra il 5° e l’8° tasto, lì ogni nota funziona.`]);
+  if(rhythmQ<0.6)W.push([1-rhythmQ,`Solo il ${Math.round(rhythmQ*100)}% delle note cadeva a tempo con la base: le note «volano» senza appoggio. Prova a suonare solo sui battiti, contando 1-2-3-4, e poi aggiungi le crome.`]);
+  if(mechQ<0.7)W.push([1-mechQ,'Gran parte dell’assolo era la scala suonata su e giù: così sembra un esercizio, non musica. Prendi tre o quattro note vicine e ripetile con ritmi diversi, salta da una corda all’altra.']);
+  if(phraseQ<0.6)W.push([1-phraseQ,phrases.length<wantPh?'Quasi niente pause: dividi l’assolo in frasi brevi, di 3–6 note, e lascia una pausa dopo ognuna. Pensa a domanda e risposta.':'Le frasi erano troppo lunghe o fatte di una nota sola: punta a frasi di 3–6 note con una pausa dopo.']);
+  if(landQ<0.6)W.push([1-landQ,`Su ${land.length-landOk.length} arrivi su ${land.length} la nota finale stonava con l’accordo. Chiudi le frasi sul La; quando arriva il ${chl(x.chords.find(k=>k!==x.chords[0])||x.chords[0])}, fermati su una sua nota.`]);
+  if(perBar>14)W.push([0.4,'Troppe note e troppo veloci: nel blues contano di più poche note dette con intenzione.']);
+  if(distinct<4)W.push([0.4,'Hai usato pochissime note diverse: esplora tutta la forma, dalla 6ª alla 1ª corda.']);
+  W.sort((a,b)=>b[0]-a[0]).slice(0,3).forEach(w=>L.push(w[1]));
+  const good=[];if(inS>=0.9)good.push('sei rimasto nella scala');if(rhythmQ>=0.7)good.push('le note cadevano a tempo');if(landQ>=0.7)good.push('chiudevi le frasi su note dell’accordo');if(phraseQ>=0.7)good.push('le frasi respiravano');
+  if(good.length)L.push('Bene: '+good.join(', ')+'.');
+  if(!W.length&&score>=80)L.push('Questo è un assolo vero: frasi, tempo e arrivi giusti.');
+  return {score,lines:L,stats:`${N} note · scala ${Math.round(inS*100)}% · a tempo ${Math.round(rhythmQ*100)}% · arrivi ${Math.round(landQ*100)}% · ${phrases.length} frasi · ${r.bpm} bpm`,heard:N}}
 
 function finish(){const r=run;if(!r)return;r.seq&&r.seq.stop();clearTimeout(r.to);run=null;resetBtns();
   const x=r.x;const R=x.type==='seq'?evalSeq(r):x.type==='chord'?evalChord(r):x.type==='improv'?evalImprov(r):evalPrompt(r);res=R;
