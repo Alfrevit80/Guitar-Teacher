@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261115115813">
+<meta name="qc-build" content="20261115120432">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -24,6 +24,8 @@
 .ytbar input{flex:1;min-width:0;accent-color:var(--green)}
 .ytvol{width:100%;margin-left:0}
 .ytvol input{flex:1;width:auto}
+.ytios{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.ytios[hidden]{display:none}
 .ytvideo{width:100%;aspect-ratio:16/9;max-width:100%;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#000}
 .ytvideo iframe{width:100%;height:100%;display:block;border:0}
 .ytside{overflow:auto;max-height:100%}
@@ -553,6 +555,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
           <div class="ytspd"><button class="btn round" id="ytSlow" aria-label="Più lento">−</button><div class="ytbpm"><b class="mono" id="ytBpm">–</b><span class="small muted" id="ytRate">velocità 100%</span></div><button class="btn round" id="ytFast" aria-label="Più veloce">+</button><button class="btn small" id="ytOrig1" title="Torna alla velocità originale">100%</button></div>
         </div>
         <label class="volrow mini ytvol" for="ytVol"><span class="small muted">Volume</span><input type="range" id="ytVol" min="0" max="100" step="1" value="80" aria-label="Volume della base"><span class="mono small" id="ytVolV">80</span></label>
+        <div class="ytios" id="ytIos" hidden><span class="small muted">Su iPhone e iPad Apple non lascia regolare il volume di YouTube da una pagina: usa i tasti del volume del telefono. Per bilanciare, abbassa metronomo ed esempi dalla lezione.</span><button class="btn small" id="ytMute" aria-pressed="false">Muto</button></div>
         <div class="ytvideo" id="ytVideo" hidden><div id="ytPlayer"></div></div>
         <div class="small muted" id="ytMsg">Incolla il link di una base da YouTube e premi Carica.</div>
       </div>
@@ -2148,6 +2151,7 @@ async function load(autoplay){const id=parseId($('ytUrl').value);if(!id){msg('No
       onPlaybackRateChange:()=>{rate=player.getPlaybackRate();rateUI()},
       onStateChange:e=>{const S=YT.PlayerState;const pl=e.data===S.PLAYING;$('ytPlay').classList.toggle('on',pl);$('ytDot').hidden=!pl;
         if(pl){try{const d=player.getVideoData();msg(d&&d.title?d.title:'In riproduzione')}catch(_){}}
+        if(pl&&!isIOS){try{player.unMute();player.setVolume(+$('ytVol').value)}catch(_){}}
         if(e.data===S.ENDED)msg('Fine della base. ⟲ per ricominciare.')},
       onError:e=>msg(ERR[e.data]||'YouTube non riesce a riprodurre questo video.')}})}
 function tick(){clearInterval(timer);timer=setInterval(()=>{if(!ready||!player.getDuration)return;const d=player.getDuration()||0,c=player.getCurrentTime()||0;
@@ -2181,7 +2185,11 @@ $('ytStop').onclick=()=>{if(!need())return;player.pauseVideo();const s0=loopOn&&
 $('ytRestart').onclick=()=>{if(!need())return;player.seekTo(loopOn&&A!=null?A:0,true);player.playVideo()};
 $('ytSeek').addEventListener('input',()=>{dragging=true});
 $('ytSeek').addEventListener('change',()=>{dragging=false;if(!ready)return;const d=player.getDuration()||0;player.seekTo(d*$('ytSeek').value/1000,true)});
-$('ytVol').addEventListener('input',e=>{const v=+e.target.value;$('ytVolV').textContent=v;ls.set('ytvol',v);if(ready)player.setVolume(v)});
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(isIOS){document.querySelector('.ytvol').hidden=true;$('ytIos').hidden=false}
+let muted=false;$('ytMute').onclick=()=>{if(!need())return;muted=!muted;muted?player.mute():player.unMute();$('ytMute').classList.toggle('on',muted);$('ytMute').setAttribute('aria-pressed',muted);$('ytMute').textContent=muted?'Togli muto':'Muto'};
+const applyVol=v=>{if(!ready)return;try{if(v>0&&player.isMuted&&player.isMuted())player.unMute();player.setVolume(v);if(v===0)player.mute()}catch(_){}};
+$('ytVol').addEventListener('input',e=>{const v=+e.target.value;$('ytVolV').textContent=v;ls.set('ytvol',v);applyVol(v)});
 const v0=ls.get('ytvol',80);$('ytVol').value=v0;$('ytVolV').textContent=v0;
 $('ytUrl').value=ls.get('yturl','');
 view(ls.get('cview','scala')==='base');
