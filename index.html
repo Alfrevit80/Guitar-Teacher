@@ -26,6 +26,16 @@
 .ytvideo{width:100%;aspect-ratio:16/9;max-width:100%;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#000}
 .ytvideo iframe{width:100%;height:100%;display:block;border:0}
 .ytside{overflow:auto;max-height:100%}
+.ytseekw{position:relative;flex:1;min-width:0;display:flex;align-items:center}
+.ytseekw input{width:100%}
+.ytab{position:absolute;top:50%;height:14px;transform:translateY(-50%);background:color-mix(in srgb,var(--yellow,#ffd84d) 22%,transparent);border-left:2px solid var(--yellow,#ffd84d);border-right:2px solid var(--yellow,#ffd84d);pointer-events:none;border-radius:2px}
+.ytloop{display:grid;grid-template-columns:1fr 1fr 1.2fr auto;gap:6px}
+.ytloop .btn{padding:6px 4px;white-space:nowrap}
+.ytloop .btn.on{border-color:var(--yellow,#ffd84d);color:var(--yellow,#ffd84d)}
+.yttempo{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.ytspd{display:flex;align-items:center;gap:8px}
+.ytbpm{display:flex;flex-direction:column;align-items:center;min-width:7ch;flex:1}
+.ytbpm b{font-size:calc(22px * var(--fs));color:var(--green);font-weight:400}
 </style>
 <title>Quadranti Chitarra</title>
 </head>
@@ -528,7 +538,18 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
           <button class="btn" id="ytStop" aria-label="Stop" title="Stop">■</button>
           <button class="btn" id="ytRestart" aria-label="Ricomincia" title="Ricomincia">⟲</button>
         </div>
-        <div class="ytbar"><input type="range" id="ytSeek" min="0" max="1000" value="0" aria-label="Posizione nella base"><span class="mono small" id="ytTime">0:00 / 0:00</span></div>
+        <div class="ytbar"><div class="ytseekw"><div class="ytab" id="ytAB" hidden></div><input type="range" id="ytSeek" min="0" max="1000" value="0" aria-label="Posizione nella base"></div><span class="mono small" id="ytTime">0:00 / 0:00</span></div>
+        <div class="ytloop" role="group" aria-label="Ripetizione di un pezzo">
+          <button class="btn small" id="ytA" title="Inizio del pezzo: il punto in cui sei adesso">A <span class="mono" id="ytAv">–</span></button>
+          <button class="btn small" id="ytB" title="Fine del pezzo: il punto in cui sei adesso">B <span class="mono" id="ytBv">–</span></button>
+          <button class="btn small" id="ytLoop" aria-pressed="false">⟳ Loop</button>
+          <button class="btn small" id="ytClr" title="Togli A e B">✕</button>
+        </div>
+        <div class="yttempo">
+          <label class="small muted" for="ytOrig">BPM della base</label>
+          <div class="ytrow"><input id="ytOrig" type="number" inputmode="numeric" min="30" max="250" placeholder="es. 90" aria-label="BPM originali della base"><button class="btn small" id="ytTap" title="Batti a tempo con la base">Tap</button></div>
+          <div class="ytspd"><button class="btn round" id="ytSlow" aria-label="Più lento">−</button><div class="ytbpm"><b class="mono" id="ytBpm">–</b><span class="small muted" id="ytRate">velocità 100%</span></div><button class="btn round" id="ytFast" aria-label="Più veloce">+</button><button class="btn small" id="ytOrig1" title="Torna alla velocità originale">100%</button></div>
+        </div>
         <label class="volrow mini ytvol" for="ytVol"><span class="small muted">Volume</span><input type="range" id="ytVol" min="0" max="100" step="1" value="80" aria-label="Volume della base"><span class="mono small" id="ytVolV">80</span></label>
         <div class="ytvideo" id="ytVideo" hidden><div id="ytPlayer"></div></div>
         <div class="small muted" id="ytMsg">Incolla il link di una base da YouTube e premi Carica.</div>
@@ -2096,7 +2117,8 @@ document.addEventListener('pointerdown',()=>document.body.classList.remove('kb')
 (function(){
 const $=id=>document.getElementById(id);
 const ls={get(k,d){try{const v=localStorage.getItem('qc_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('qc_'+k,JSON.stringify(v))}catch(e){}}};
-let player=null,ready=false,apiP=null,timer=null,vid=null,dragging=false;
+let player=null,ready=false,apiP=null,timer=null,vid=null,dragging=false,A=null,B=null,loopOn=false,orig=null,rate=1;
+const meta=()=>ls.get('ytmeta',{}),saveMeta=()=>{if(!vid)return;const m=meta();m[vid]={A,B,orig,loop:loopOn};const ks=Object.keys(m);if(ks.length>40)delete m[ks[0]];ls.set('ytmeta',m)};
 function view(base){$('ytSide').hidden=!base;document.querySelector('.cside:not(.ytside)').hidden=base;
   $('cvBase').classList.toggle('on',base);$('cvScale').classList.toggle('on',!base);$('cvBase').setAttribute('aria-pressed',base);$('cvScale').setAttribute('aria-pressed',!base);ls.set('cview',base?'base':'scala')}
 $('cvScale').onclick=()=>view(false);$('cvBase').onclick=()=>view(true);
@@ -2118,22 +2140,43 @@ async function load(autoplay){const id=parseId($('ytUrl').value);if(!id){msg('No
   msg('Carico la base…');ls.set('yturl',$('ytUrl').value.trim());
   try{await api()}catch(e){msg('Non riesco a collegarmi a YouTube: controlla la connessione e riprova.');return}
   $('ytVideo').hidden=false;
-  if(player&&ready){vid=id;autoplay?player.loadVideoById(id):player.cueVideoById(id);return}
+  if(player&&ready){vid=id;restoreMeta();autoplay?player.loadVideoById(id):player.cueVideoById(id);setTimeout(()=>setRate(rate),800);return}
   vid=id;player=new YT.Player('ytPlayer',{videoId:id,host:'https://www.youtube-nocookie.com',playerVars:{playsinline:1,rel:0,modestbranding:1,controls:0,disablekb:1,fs:0,iv_load_policy:3},
-    events:{onReady:()=>{ready=true;player.setVolume(+$('ytVol').value);msg('Base pronta: premi ▶ per partire.');tick();if(autoplay)player.playVideo()},
+    events:{onReady:()=>{ready=true;player.setVolume(+$('ytVol').value);msg('Base pronta: premi ▶ per partire.');tick();restoreMeta();if(autoplay)player.playVideo()},
+      onPlaybackRateChange:()=>{rate=player.getPlaybackRate();rateUI()},
       onStateChange:e=>{const S=YT.PlayerState;const pl=e.data===S.PLAYING;$('ytPlay').classList.toggle('on',pl);$('ytDot').hidden=!pl;
         if(pl){try{const d=player.getVideoData();msg(d&&d.title?d.title:'In riproduzione')}catch(_){}}
         if(e.data===S.ENDED)msg('Fine della base. ⟲ per ricominciare.')},
       onError:e=>msg(ERR[e.data]||'YouTube non riesce a riprodurre questo video.')}})}
 function tick(){clearInterval(timer);timer=setInterval(()=>{if(!ready||!player.getDuration)return;const d=player.getDuration()||0,c=player.getCurrentTime()||0;
-  $('ytTime').textContent=`${fmt(c)} / ${fmt(d)}`;if(!dragging&&d)$('ytSeek').value=Math.round(c/d*1000)},250)}
+  if(loopOn&&A!=null&&B!=null&&B>A&&(c>=B-0.04||c<A-0.6)){player.seekTo(A,true);return}
+  $('ytTime').textContent=`${fmt(c)} / ${fmt(d)}`;if(!dragging&&d)$('ytSeek').value=Math.round(c/d*1000);drawAB(d)},80)}
+function drawAB(d){d=d||(ready&&player.getDuration()||0);const ab=$('ytAB');$('ytAv').textContent=A!=null?fmt(A):'–';$('ytBv').textContent=B!=null?fmt(B):'–';
+  if(!d||A==null){ab.hidden=true;return}const b=B!=null?B:A;ab.hidden=false;ab.style.left=(A/d*100)+'%';ab.style.width=Math.max(0.4,(b-A)/d*100)+'%'}
+function loopUI(){$('ytLoop').classList.toggle('on',loopOn);$('ytLoop').setAttribute('aria-pressed',loopOn);$('ytA').classList.toggle('on',A!=null);$('ytB').classList.toggle('on',B!=null)}
+/* velocità: YouTube rallenta e accelera senza cambiare la tonalità */
+function rateUI(){const r=ready?(player.getPlaybackRate()||rate):rate;$('ytRate').textContent=`velocità ${Math.round(r*100)}%`;$('ytBpm').textContent=orig?Math.round(orig*r):'–'}
+function setRate(r){r=Math.max(0.25,Math.min(2,Math.round(r*100)/100));rate=r;if(!ready){rateUI();return}
+  player.setPlaybackRate(r);setTimeout(()=>{const got=player.getPlaybackRate();if(Math.abs(got-r)>0.001){
+      const av=(player.getAvailablePlaybackRates&&player.getAvailablePlaybackRates())||[];msg(`YouTube per questo video accetta solo alcune velocità (${av.map(v=>Math.round(v*100)+'%').join(', ')}): uso ${Math.round(got*100)}%.`)}
+    rate=got;rateUI()},300)}
+function step(dir){if(orig){const cur=Math.round(orig*rate);setRate((cur+dir*2)/orig)}else setRate(rate+dir*0.05)}
 const need=()=>{if(!ready){msg($('ytUrl').value.trim()?'Premi prima «Carica».':'Incolla prima il link di una base e premi «Carica».');return false}return true};
+function restoreMeta(){const m=meta()[vid]||{};A=m.A!=null?m.A:null;B=m.B!=null?m.B:null;loopOn=!!m.loop&&A!=null&&B!=null;orig=m.orig||null;$('ytOrig').value=orig||'';loopUI();drawAB();rateUI()}
+$('ytA').onclick=()=>{if(!need())return;A=player.getCurrentTime();if(B!=null&&B<=A+0.2)B=null;loopUI();drawAB();saveMeta();msg(`Inizio del pezzo: ${fmt(A)}. Ora vai alla fine e premi B.`)};
+$('ytB').onclick=()=>{if(!need())return;const c=player.getCurrentTime();if(A==null){A=0}if(c<=A+0.2){msg('B deve venire dopo A.');return}B=c;loopOn=true;loopUI();drawAB();saveMeta();player.seekTo(A,true);msg(`Loop da ${fmt(A)} a ${fmt(B)}: il pezzo si ripete finché non togli il loop.`)};
+$('ytLoop').onclick=()=>{if(A==null||B==null){msg('Prima segna l’inizio con A e la fine con B mentre la base suona.');return}loopOn=!loopOn;loopUI();saveMeta();msg(loopOn?`Loop attivo: ${fmt(A)} – ${fmt(B)}.`:'Loop spento: la base va avanti normalmente.')};
+$('ytClr').onclick=()=>{A=B=null;loopOn=false;loopUI();drawAB();saveMeta();msg('Pezzo tolto: si ascolta tutta la base.')};
+$('ytOrig').addEventListener('change',e=>{const v=+e.target.value;orig=v>=30&&v<=250?v:null;saveMeta();rateUI()});
+let taps=[];$('ytTap').onclick=()=>{const n=performance.now();taps=taps.filter(t=>n-t<3000);taps.push(n);if(taps.length>=4){const d=(taps[taps.length-1]-taps[0])/(taps.length-1);
+  orig=Math.round(60000/d/(ready?player.getPlaybackRate():rate));$('ytOrig').value=orig;saveMeta();rateUI();msg(`BPM della base: circa ${orig}. Ora regola la velocità con − e +.`)}else msg(`Batti a tempo con la base… (${taps.length}/4)`)};
+$('ytSlow').onclick=()=>step(-1);$('ytFast').onclick=()=>step(1);$('ytOrig1').onclick=()=>setRate(1);
 $('ytLoad').onclick=()=>load(false);
 $('ytUrl').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load(false)}});
 $('ytPlay').onclick=()=>{if(!ready){if($('ytUrl').value.trim())load(true);else need();return}if(window.QC&&QC.stopMetro)QC.stopMetro();player.playVideo()};
 $('ytPause').onclick=()=>{if(need())player.pauseVideo()};
-$('ytStop').onclick=()=>{if(!need())return;player.pauseVideo();player.seekTo(0,true);$('ytSeek').value=0;msg('Base ferma all’inizio.')};
-$('ytRestart').onclick=()=>{if(!need())return;player.seekTo(0,true);player.playVideo()};
+$('ytStop').onclick=()=>{if(!need())return;player.pauseVideo();const s0=loopOn&&A!=null?A:0;player.seekTo(s0,true);msg(loopOn?'Base ferma all’inizio del pezzo (A).':'Base ferma all’inizio.')};
+$('ytRestart').onclick=()=>{if(!need())return;player.seekTo(loopOn&&A!=null?A:0,true);player.playVideo()};
 $('ytSeek').addEventListener('input',()=>{dragging=true});
 $('ytSeek').addEventListener('change',()=>{dragging=false;if(!ready)return;const d=player.getDuration()||0;player.seekTo(d*$('ytSeek').value/1000,true)});
 $('ytVol').addEventListener('input',e=>{const v=+e.target.value;$('ytVolV').textContent=v;ls.set('ytvol',v);if(ready)player.setVolume(v)});
