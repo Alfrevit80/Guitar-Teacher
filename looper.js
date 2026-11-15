@@ -3,10 +3,11 @@
 const $=id=>document.getElementById(id);
 const ls={get(k,d){try{const v=localStorage.getItem('qc_lp_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
           set(k,v){try{localStorage.setItem('qc_lp_'+k,JSON.stringify(v))}catch(e){}}};
-const NT=1;                       /* F1: una traccia visibile (il motore ne ha già 5) */
+const NT=1;                       /* F1: una traccia visibile (il motore ne ha già 4) */
 const S={rt:ls.get('rt',null),mon:ls.get('mon',false),chan:ls.get('chan','sum'),inDb:ls.get('indb',0),master:ls.get('master',100),
   recAction:ls.get('recAction','play'),tr:ls.get('tr',null)};
-if(!Array.isArray(S.tr)||S.tr.length<5)S.tr=Array.from({length:5},()=>({vol:100,pan:0,dub:'over'}));
+if(!Array.isArray(S.tr)||S.tr.length<4)S.tr=Array.from({length:4},()=>({vol:100,pan:0,dub:'over'}));
+S.tr=S.tr.slice(0,4);
 const saveTr=()=>ls.set('tr',S.tr);
 let ac=null,node=null,loading=null,outG=null,inA=null,inB=null,last=null,undoMode=false,calMode=null;
 
