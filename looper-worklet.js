@@ -4,7 +4,7 @@
    Le tracce sono salvate a blocchi con copia su scrittura: undo/redo/mark costano solo i blocchi modificati. */
 const CHS = 14, CH = 1 << CHS, CHM = CH - 1;          // blocchi da 16384 frame (~0,35 s)
 const RING = 1 << 17, RM = RING - 1;                   // ~2,7 s di storia dell'ingresso
-const NTR = 5;
+const NTR = 4;
 const mod = (a, n) => { a %= n; return a < 0 ? a + n : a };
 
 class Track {

@@ -4,6 +4,9 @@ Pagina **Looper** di Quadranti Chitarra. Riprende le funzioni e il flusso di lav
 a 5 tracce da tavolo (modello di riferimento: Manuale dell'Utente RC-505mkII, versione italiana),
 con nome e grafica originali: nessun logo, marchio o nome commerciale nell'interfaccia.
 
+**Scelta di progetto: il looper ha 4 tracce, non 5.** Tutto quello che il manuale riferisce alle
+tracce 1–5 qui vale per le tracce 1–4.
+
 **Fonte**: il Manuale dell'Utente (26 pagine) descrive il flusso e i parametri, ma per i valori
 rimanda alla *Parameter Guide*, che non è nel PDF. Dove mi baso sulla Parameter Guide o sul
 comportamento noto dell'apparecchio lo scrivo con **[PG]**: sono da verificare. Se mi carichi
@@ -17,8 +20,8 @@ Legenda: ✅ replicata fedelmente · ≈ approssimata (il motivo è scritto acca
 
 | Manuale | Looper | |
 |---|---|---|
-| 5 tracce stereo | 5 tracce stereo (F1: solo traccia 1 nell'interfaccia, motore già a 5) | ✅ |
-| Memoria = impostazioni di tracce 1–5 + Input FX/Track FX + ritmo + nome | Uguale, frasi audio comprese | ✅ F6 |
+| 5 tracce stereo | **4 tracce stereo** per scelta (F1: solo la traccia 1 nell'interfaccia, il motore ne ha già 4) | ≈ |
+| Memoria = impostazioni di tracce 1–4 + Input FX/Track FX + ritmo + nome | Uguale, frasi audio comprese | ✅ F6 |
 | 99 memorie | Numero libero, limitato dallo spazio di IndexedDB del browser | ≈ |
 | Impostazioni di sistema (comuni) | Pannello «Impostazioni» del looper, salvato in `localStorage` | ✅ |
 | Input FX e Track FX: 4 banchi × 4 effetti (16 per lato) | Uguale | ✅ F5 |
@@ -45,7 +48,7 @@ registrazione successiva. Uso la stessa distinzione.
 - **Tasto TRACK** (✅ F2): apre le impostazioni della traccia e la rende «traccia corrente».
 
 ### Globali
-- **ALL START/STOP** (✅ F1 su 1 traccia, F2 su 5): avvia insieme tutte le tracce scelte
+- **ALL START/STOP** (✅ F1 su 1 traccia, F2 su 4): avvia insieme tutte le tracce scelte
   (ALL START TRK, impostabile per memoria) e le ferma tutte.
 - **UNDO/REDO** (✅ F1). Il tasto attiva la modalità undo; in questa modalità i tasti di traccia cambiano funzione (p. 5):
   | Tasto | Funzione |
@@ -217,7 +220,7 @@ robot, osc-voc/bot, lo-fi radio e simili ✗. Si possono aggiungere più avanti.
 | Fase | Contenuto |
 |---|---|
 | F1 | Motore AudioWorklet, traccia 1: rec/dub/play/stop/clear, undo/redo/mark, volume/pan, nessun click, calibrazione della latenza |
-| F2 | 5 tracce, loop sync, quantize, tempo sync, parametri di traccia, auto-rec, count-in, play mode, contatore, clock condiviso col metronomo |
+| F2 | 4 tracce, loop sync, quantize, tempo sync, parametri di traccia, auto-rec, count-in, play mode, contatore, clock condiviso col metronomo |
 | F3 | Manico, nota suonata ed esercizi |
 | F4 | MIDI (ASSIGN, Learn, profili) e tastiera/pedaliera BT |
 | F5 | Input FX e Track FX |
