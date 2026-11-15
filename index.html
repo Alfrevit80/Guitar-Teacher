@@ -23,7 +23,7 @@
 /* Layout: quattro quadranti 2x2 su nero, linee sottili verdi/blu; su telefono si impilano 1-2-3-4 */
 :root{
   --bg:#040607; --panel:#070b0d; --line:#16252a; --fg:#d6e3e7; --muted:#61767d;
-  --green:#3fdc9a; --blue:#4ea9ff; --warn:#ffb34d; --red:#ff5d6c;
+  --green:#3fdc9a; --blue:#4ea9ff; --warn:#ffb34d; --red:#ff5d6c; --yellow:#ffd84d;
   --sans:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
   color-scheme:dark;
@@ -404,11 +404,64 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 .tabs .sp{flex:1}
 .fsz{display:flex;gap:4px;align-items:center}
 .fsz .btn{padding:4px 10px;line-height:1}
+/* looper */
+.lp-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:-2px}
+.lp-dot.rec{background:var(--red);box-shadow:0 0 8px var(--red)}.lp-dot.dub{background:var(--yellow);box-shadow:0 0 8px var(--yellow)}.lp-dot.play{background:var(--green);box-shadow:0 0 8px var(--green)}
+.lpage{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto}
+.lp-top{border:1px solid color-mix(in srgb,var(--blue) 28%,var(--line));border-radius:6px;background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.lp-chip{font-family:var(--mono);font-size:calc(12px * var(--fs));border:1px solid var(--line);border-radius:3px;padding:3px 7px}
+.lp-invu{width:120px;height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden;display:inline-block}
+.lp-invu i{display:block;height:100%;width:0;background:var(--muted)}.lp-invu i.ok{background:var(--green)}.lp-invu i.hot{background:var(--red)}
+.lp-main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;min-height:0}
+.lp-tracks{border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:6px;background:var(--panel);padding:14px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.lp-side{border:1px solid color-mix(in srgb,var(--blue) 28%,var(--line));border-radius:6px;background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:12px}
+.lp-side .lp-g{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.lp-side label{display:flex;flex-direction:column;gap:4px}
+.lp-tr{width:220px;max-width:100%;display:flex;flex-direction:column;gap:10px;align-items:stretch;border:1px solid var(--line);border-radius:6px;padding:10px}
+.lp-trh{display:flex;align-items:center;gap:8px}
+.lp-st{font-size:calc(11px * var(--fs));letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.lp-ringwrap{position:relative;width:180px;height:180px;align-self:center}
+.lp-ring{position:absolute;inset:0;width:100%;height:100%}
+.lp-ring circle{fill:none}
+.lp-ring .bg{stroke:var(--line);stroke-width:6}
+.lp-ring .pr{stroke:var(--muted);stroke-width:6;stroke-linecap:round}
+.lp-ring .lv{stroke:currentColor;stroke-width:2;opacity:0;color:var(--muted)}
+.lp-rp{position:absolute;inset:26px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-family:var(--mono);font-size:calc(20px * var(--fs));letter-spacing:.08em;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.lp-rp:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.st-rec .lp-rp{border-color:var(--red);color:var(--red);box-shadow:0 0 24px color-mix(in srgb,var(--red) 35%,transparent) inset}
+.st-play .lp-rp{border-color:var(--green);color:var(--green)}
+.st-dub .lp-rp{border-color:var(--yellow);color:var(--yellow);box-shadow:0 0 24px color-mix(in srgb,var(--yellow) 30%,transparent) inset}
+.st-stop .lp-rp{border-color:color-mix(in srgb,var(--fg) 40%,var(--line))}
+.st-rec .pr{stroke:var(--red)}.st-play .pr{stroke:var(--green)}.st-dub .pr{stroke:var(--yellow)}.st-stop .pr{stroke:color-mix(in srgb,var(--fg) 30%,transparent)}
+.st-rec .lv{color:var(--red)}.st-play .lv{color:var(--green)}.st-dub .lv{color:var(--yellow)}
+.st-stop .bg{stroke:color-mix(in srgb,var(--fg) 25%,var(--line))}
+.st-rec .lp-ring .bg{animation:lpPulse 1s ease-in-out infinite}
+@keyframes lpPulse{50%{stroke:color-mix(in srgb,var(--red) 45%,var(--line))}}
+.um .lp-rp{border-style:dashed;color:var(--muted);border-color:var(--line);box-shadow:none}
+.um .lp-rp[data-u="u"]{color:var(--green);border-color:var(--green)}.um .lp-rp[data-u="r"]{color:var(--red);border-color:var(--red)}
+.lp-btns{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
+.lp-btns .btn{touch-action:manipulation;-webkit-user-select:none;user-select:none;padding:8px 4px;font-size:calc(12px * var(--fs));line-height:1.15;min-height:44px}
+.lp-len{white-space:nowrap}
+.lp-stop{position:relative;overflow:hidden;font-family:var(--mono)}
+.lp-stop i{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--red)}
+.lp-stop.hold i{width:100%;transition:width 2s linear}
+.lp-sl{display:grid;grid-template-columns:56px minmax(0,1fr) 38px;gap:6px;align-items:center}
+.lp-sl .lp-v{text-align:right;color:var(--muted)}
+.lp-trset{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.lp-trset label{display:flex;flex-direction:column;gap:4px}
+.lp-trset select{max-width:100%}
+#lpAll{width:100%}
+.lp-cal{border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:6px;background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.caldots span.ci{border-style:dashed}
+#pageLooper .gainsel{display:none!important}
+@media (max-width:860px){.tabs{flex-wrap:wrap;row-gap:6px}.tabs a{padding:6px 8px 6px 4px;letter-spacing:.08em}}
+@media (max-width:860px){.lp-main{grid-template-columns:minmax(0,1fr)}.lpage{overflow:visible}}
 </style>
 
 <nav class="tabs" aria-label="Pagine">
   <a href="#lezione" id="tab1" class="on"><span class="qn">1</span>Lezione</a>
   <a href="#strumenti" id="tab2"><span class="qn">2</span>Strumenti</a>
+  <a href="#looper" id="tab3"><span class="qn">3</span>Looper <span class="lp-dot" id="lpDot" aria-hidden="true"></span></a>
   <span class="sp"></span>
   <div class="fsz" role="group" aria-label="Dimensione del testo"><span class="small muted">Testo</span><button class="btn small" id="fsDown" aria-label="Testo più piccolo">A−</button><button class="btn small" id="fsUp" aria-label="Testo più grande">A+</button></div>
 </nav>
@@ -576,6 +629,50 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
       <button class="btn" id="sumBack">Torna all’inizio</button>
     </div>
   </section>
+</div>
+
+<div class="lpage" id="pageLooper" hidden>
+  <section class="lp-top" aria-label="Ingresso del looper">
+    <div class="qh"><span class="qn">3</span><span class="qt">Looper</span><span class="sp"></span></div>
+    <div class="row small">
+      <button class="btn small micbtn">Attiva ingresso</button>
+      <span class="small muted">Registrazione</span><span class="lp-invu" title="Livello che arriva al looper"><i id="lpInVu"></i></span>
+      <span class="lp-chip" id="lpLatChip">Ritardo</span><button class="btn small" id="lpCalOpen">Calibra il ritardo</button>
+    </div>
+  </section>
+  <div class="lp-main" id="lpMain">
+    <section class="lp-tracks" id="lpTracks" aria-label="Tracce"></section>
+    <aside class="lp-side" aria-label="Comandi generali">
+      <button class="btn big" id="lpAll">ALL START / STOP</button>
+      <button class="btn" id="lpUndo" aria-pressed="false">UNDO / REDO</button>
+      <div class="lp-g">
+        <label class="small muted" for="lpRecAction">Fine della prima registrazione</label>
+        <select id="lpRecAction"><option value="play">REC → PLAY (poi DUB)</option><option value="dub">REC → DUB (sovraincidi subito)</option></select>
+      </div>
+      <div class="lp-g">
+        <label class="small muted" for="lpChan">Canale della chitarra</label>
+        <select id="lpChan"><option value="sum">Ingresso 1 + 2</option><option value="1">Solo ingresso 1</option><option value="2">Solo ingresso 2</option></select>
+        <label class="small muted" for="lpInDb">Livello di registrazione <span class="mono" id="lpInDbV"></span></label>
+        <input type="range" id="lpInDb" min="-20" max="20" step="1" value="0">
+        <button class="btn small" id="lpMon" aria-pressed="false">Ascolto ingresso: no</button>
+        <span class="small muted">Lascialo su «no» se senti già la chitarra dalla scheda audio (monitor diretto, senza ritardo).</span>
+      </div>
+      <div class="lp-g">
+        <label class="small muted" for="lpMaster">Volume del looper <span class="mono" id="lpMasterV"></span></label>
+        <input type="range" id="lpMaster" min="0" max="100" step="1" value="100">
+      </div>
+    </aside>
+  </div>
+  <section class="lp-cal" id="lpCal" hidden>
+    <div><div class="exlvl">Looper</div><h2 class="sumh">Calibrazione del ritardo</h2></div>
+    <p class="tintro">Tra quello che senti e quello che arriva all’app passa qualche millesimo di secondo: uscita della scheda, cuffie, ingresso. Il looper lo toglie da ogni sovraincisione, così cade a tempo con il loop. Misuralo con le stesse impostazioni con cui suoni (stessa scheda, stesse cuffie).</p>
+    <p class="tintro"><b>Suonando a tempo</b>: dopo 4 click di attacco ne senti 12, dai una pennata secca su una corda a vuoto esattamente su ognuno. <b>Con cavo di ritorno</b>: collega un’uscita della scheda a un suo ingresso (o metti un microfono vicino all’altoparlante) e lascia che l’app ascolti i propri click: è la misura più precisa.</p>
+    <div class="row"><button class="btn big on" id="lpCalPlay">Suonando a tempo</button><button class="btn" id="lpCalLoop">Con cavo di ritorno</button><button class="link" id="lpCalBack">Torna al looper</button></div>
+    <div class="caldots" id="lpCalDots"></div>
+    <div class="teacher" id="lpCalRes"></div>
+    <div class="row small"><span class="muted">Ritocco a mano</span><button class="btn small" id="lpRtM" aria-label="Un millisecondo in meno">−1 ms</button><span class="mono" id="lpRtVal"></span><button class="btn small" id="lpRtP" aria-label="Un millisecondo in più">+1 ms</button><button class="btn small" id="lpRtR">Usa la stima del browser</button></div>
+  </section>
+  <div class="exmsg" id="lpMsg" aria-live="polite"></div>
 </div>
 
 <div class="chat" id="chat">
@@ -940,9 +1037,9 @@ function listen(){if(!analyser)return;requestAnimationFrame(listen);if(++frame%(
   last.push(m);if(last.length>3)last.shift();
   if(last.length===3&&last.every(x=>x===m))showNote(f,m,cents,false);
 }
-let analyser2=null,fbuf=null,inGain=null,vuK=0,vuPeak=0,longPeak=0;
+let analyser2=null,fbuf=null,inGain=null,inSp=null,vuK=0,vuPeak=0,longPeak=0;
 const gainSet=()=>{const g=store.get('ingain','auto');return g==='auto'?'auto':+g||1};
-function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null;inGain=null;try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
+function stopIn(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;analyser=null;analyser2=null;inGain=null;inSp=null;try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}}
 async function startIn(){
   try{if(navigator.audioSession)navigator.audioSession.type='play-and-record'}catch(e){}
   const id=$('dev').value||store.get('dev','');
@@ -950,10 +1047,10 @@ async function startIn(){
   const a=audio(),src=a.createMediaStreamSource(stream);
   /* somma i due canali della scheda: la chitarra può essere sull'ingresso 1 o sul 2 */
   const sp=a.createChannelSplitter(2);inGain=a.createGain();inGain.channelCount=1;inGain.channelCountMode='explicit';inGain.gain.value=gainSet()==='auto'?Math.max(1,store.get('autogain',1)):gainSet();longPeak=0;
-  src.connect(sp);sp.connect(inGain,0);sp.connect(inGain,1);
+  src.connect(sp);sp.connect(inGain,0);sp.connect(inGain,1);inSp=sp;
   analyser=a.createAnalyser();analyser.fftSize=2048;buf=new Float32Array(analyser.fftSize);inGain.connect(analyser); // nessuna uscita: niente rientro
   analyser2=a.createAnalyser();analyser2.fftSize=8192;analyser2.smoothingTimeConstant=0;fbuf=new Float32Array(analyser2.frequencyBinCount);inGain.connect(analyser2);
-  listen();
+  listen();document.dispatchEvent(new Event('qc-input'));
 }
 function vu(r){vuPeak=Math.max(r,vuPeak*0.9);
   if(inGain&&gainSet()==='auto'){const g=inGain.gain.value,raw=r/g;longPeak=Math.max(raw,longPeak*0.996);
@@ -1014,7 +1111,7 @@ document.querySelectorAll('.mvol').forEach(r=>r.addEventListener('input',e=>{if(
 document.querySelectorAll('.gvol').forEach(r=>r.addEventListener('input',e=>{if(!ac)audio();setGvol(+e.target.value)}));setGvol(gvol);
 setMvol(mvol);
 window.QC={audio,pluck,pluckAt:(m,t,v)=>pluck(m,t,v),bassAt:(m,t,v)=>pluck(m,t,v,'basso'),sfReady:()=>Object.keys(sfBufs).map(k=>k+':'+Object.keys(sfBufs[k]).length),instOut:()=>{audio();return instOut()},setInstrument:k=>{if(ac)loadSF(k)},chroma,click:(t,acc)=>click(t,acc),nmFixed,geom:{fx,cx,X0,X1,Y0,DY,FRETS},
-  get a4(){return a4},hasInput:()=>!!analyser,exFeed:()=>{},exRunning:()=>false,
+  get a4(){return a4},hasInput:()=>!!analyser,inSplit:()=>inSp,stream:()=>stream,exFeed:()=>{},exRunning:()=>false,
   outLat:()=>(ac&&ac.outputLatency)||0,anLat:()=>analyser?analyser.fftSize/ac.sampleRate*0.5:0,
   autoLat:()=>{const o=(ac&&(ac.outputLatency||ac.baseLatency))||0,a=analyser?analyser.fftSize/ac.sampleRate*0.5:0;let i=0;try{i=(stream&&stream.getAudioTracks()[0].getSettings().latency)||0}catch(e){}return o+a+i},
   lat:()=>{const c=store.get('lat',null);if(c!=null)return c;return QC.autoLat()},setLat:v=>store.set('lat',v),
@@ -1832,10 +1929,10 @@ $('pHome').onclick=()=>{stopAll();cur=null;if(TEST&&TEST.active){TEST=null}view(
 document.addEventListener('qc-mic',()=>{if(cur&&!run)msgIdle()});
 
 /* ---------- pagine ---------- */
-function route(){const h=location.hash;const tools=h==='#strumenti'||h==='#studio';
-  $('page1').hidden=!tools;$('pageL').hidden=tools;$('tab1').classList.toggle('on',!tools);$('tab2').classList.toggle('on',tools);
-  $('tab1').setAttribute('aria-current',tools?'false':'page');$('tab2').setAttribute('aria-current',tools?'page':'false');
-  if(tools){stopAll();QC.redraw()}else renderSide()}
+function route(){const h=location.hash;const tools=h==='#strumenti'||h==='#studio',loop=h==='#looper',les=!tools&&!loop;
+  $('page1').hidden=!tools;$('pageL').hidden=!les;$('pageLooper').hidden=!loop;
+  [['tab1',les],['tab2',tools],['tab3',loop]].forEach(([id,on])=>{$(id).classList.toggle('on',on);$(id).setAttribute('aria-current',on?'page':'false')});
+  if(tools){stopAll();QC.redraw()}else if(loop){stopAll();document.dispatchEvent(new Event('qc-looper-open'))}else renderSide()}
 addEventListener('hashchange',route);
 
 /* ---------- contesto per il maestro in chat ---------- */
@@ -1962,6 +2059,7 @@ document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey)return
 document.addEventListener('pointerdown',()=>document.body.classList.remove('kb'));
 })();
 </script>
+<script src="looper.js"></script>
 
 </body>
 </html>
