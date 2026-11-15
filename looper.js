@@ -171,5 +171,5 @@ document.addEventListener('visibilitychange',()=>{
 
 document.addEventListener('qc-looper-open',()=>{ensure().then(()=>{if(ac.state!=='running')say('Tocca un tasto qualsiasi per sbloccare l’audio.');else if($('lpMsg').textContent.startsWith('Tocca'))say('')}).catch(()=>{})});
 buildTracks();latUI();
-window.QC=window.QC||{};QC.looper={ensure,act,get state(){return last},get node(){return node}};
+window.QC=window.QC||{};QC.looper={ensure,act,get state(){return last},get node(){return node},lat:()=>curLat()};
 })();

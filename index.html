@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261115120432">
+<meta name="qc-build" content="20261115205212">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -40,6 +40,15 @@
 .ytbpm{display:flex;flex-direction:column;align-items:center;min-width:7ch;flex:1}
 .ytbpm b{font-size:calc(22px * var(--fs));color:var(--green);font-weight:400}
 .newver{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--green);border-radius:6px;padding:10px 14px;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:calc(100% - 32px)}
+.lpmetro .btn#lmOn.on{border-color:var(--green);color:var(--green)}
+.lmrow{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.lmbpm{display:flex;flex-direction:column;align-items:center;flex:1}
+.lmbpm b{font-size:calc(22px * var(--fs));color:var(--green);font-weight:400}
+.lmdots{display:flex;gap:8px}
+.lmdots span{width:12px;height:12px;border-radius:50%;border:1px solid var(--green)}
+.lmdots span.first{border-color:var(--blue)}
+.lmdots span.lit{background:var(--green)}.lmdots span.first.lit{background:var(--blue)}
+#lmRec.rec{border-color:var(--red);color:var(--red)}
 </style>
 <title>Quadranti Chitarra</title>
 </head>
@@ -701,6 +710,16 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
     <aside class="lp-side" aria-label="Comandi generali">
       <button class="btn big" id="lpAll">ALL START / STOP</button>
       <button class="btn" id="lpUndo" aria-pressed="false">UNDO / REDO</button>
+      <div class="lp-g lpmetro" aria-label="Metronomo del looper">
+        <span class="small muted">Metronomo</span>
+        <button class="btn" id="lmOn" aria-pressed="false">♩ Avvia il metronomo</button>
+        <div class="lmrow"><button class="btn round" id="lmMinus" aria-label="Meno 1 bpm">−</button><div class="lmbpm"><b class="mono" id="lmBpm">90</b><span class="small muted">bpm</span></div><button class="btn round" id="lmPlus" aria-label="Più 1 bpm">+</button><button class="btn small" id="lmTap">Tap</button></div>
+        <div class="lmrow"><div class="lmdots" id="lmDots" aria-hidden="true"></div><select id="lmBeats" aria-label="Battiti per battuta"><option value="2">2/4</option><option value="3">3/4</option><option value="4">4/4</option><option value="6">6/8</option></select></div>
+        <label class="small muted" for="lmVol">Volume del click <span class="mono" id="lmVolV"></span></label>
+        <input type="range" id="lmVol" min="0" max="100" step="1" value="70">
+        <button class="btn small" id="lmRec" aria-pressed="false">Registra il click nel loop: no</button>
+        <span class="small muted">Il click lo senti solo tu e non finisce nel loop, a meno che non attivi l’opzione qui sopra. Con il microfono invece del cavo usa le cuffie, altrimenti il click rientra dal microfono.</span>
+      </div>
       <div class="lp-g">
         <label class="small muted" for="lpRecAction">Fine della prima registrazione</label>
         <select id="lpRecAction"><option value="play">REC → PLAY (poi DUB)</option><option value="dub">REC → DUB (sovraincidi subito)</option></select>
@@ -2116,6 +2135,7 @@ document.addEventListener('pointerdown',()=>document.body.classList.remove('kb')
 })();
 </script>
 <script src="looper.js"></script>
+<script src="looper-metro.js"></script>
 
 <script>
 /* ---------- base da YouTube (quadrante 2) ---------- */
