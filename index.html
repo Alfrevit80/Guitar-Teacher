@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
+<meta name="qc-build" content="20261115115813">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -36,6 +37,7 @@
 .ytspd{display:flex;align-items:center;gap:8px}
 .ytbpm{display:flex;flex-direction:column;align-items:center;min-width:7ch;flex:1}
 .ytbpm b{font-size:calc(22px * var(--fs));color:var(--green);font-weight:400}
+.newver{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--green);border-radius:6px;padding:10px 14px;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:calc(100% - 32px)}
 </style>
 <title>Quadranti Chitarra</title>
 </head>
@@ -2184,6 +2186,14 @@ const v0=ls.get('ytvol',80);$('ytVol').value=v0;$('ytVolV').textContent=v0;
 $('ytUrl').value=ls.get('yturl','');
 view(ls.get('cview','scala')==='base');
 })();
+</script>
+<script>
+/* avviso di nuova versione: GitHub Pages tiene in cache la pagina fino a 10 minuti */
+(function(){const mine=(document.querySelector('meta[name="qc-build"]')||{}).content;if(!mine||location.protocol==='file:')return;
+  const bar=document.createElement('div');bar.className='newver';bar.hidden=true;bar.innerHTML='<span>È disponibile una nuova versione dell’app.</span><button class="btn small on" type="button">Aggiorna adesso</button>';document.body.appendChild(bar);
+  bar.querySelector('button').onclick=()=>{const u=new URL(location.href);u.searchParams.set('v',Date.now());location.replace(u.toString())};
+  async function check(){try{const r=await fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'});const t=await r.text();const m=t.match(/name="qc-build" content="(\d+)"/);if(m&&m[1]!==mine&&m[1]>mine)bar.hidden=false}catch(e){}}
+  setTimeout(check,3000);setInterval(check,5*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()})})();
 </script>
 </body>
 </html>
