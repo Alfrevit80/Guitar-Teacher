@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261115205212">
+<meta name="qc-build" content="20261116205411">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -492,6 +492,10 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
 .lp-cal{border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:6px;background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:14px}
 .caldots span.ci{border-style:dashed}
 #pageLooper .gainsel{display:none!important}
+.lp-tr.cur{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.lp-keys summary{cursor:pointer}
+.lp-keys dl{margin:6px 0;font-size:calc(12px * var(--fs))}
+.lp-keys dt{font-family:var(--mono);color:var(--blue);margin-top:6px}.lp-keys dd{margin:0;color:var(--muted)}
 @media (max-width:860px){.tabs{flex-wrap:wrap;row-gap:6px}.tabs a{padding:6px 8px 6px 4px;letter-spacing:.08em}}
 @media (max-width:860px){.lp-main{grid-template-columns:minmax(0,1fr)}.lpage{overflow:visible}}
 </style>
@@ -710,6 +714,20 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
     <aside class="lp-side" aria-label="Comandi generali">
       <button class="btn big" id="lpAll">ALL START / STOP</button>
       <button class="btn" id="lpUndo" aria-pressed="false">UNDO / REDO</button>
+      <details class="lp-g lp-keys">
+        <summary class="small muted">Tastiera e pedaliera Bluetooth</summary>
+        <dl>
+          <dt>Spazio</dt><dd>ALL START / STOP</dd>
+          <dt>1 · 2</dt><dd>REC / PLAY / DUB della traccia 1 · 2</dd>
+          <dt>Q · W</dt><dd>STOP della traccia 1 · 2 (tieni 2 s: cancella)</dd>
+          <dt>→ · PagGiù · Invio</dt><dd>REC / PLAY / DUB della traccia corrente</dd>
+          <dt>← · PagSu</dt><dd>STOP della traccia corrente (tieni 2 s: cancella)</dd>
+          <dt>↑ · ↓</dt><dd>cambia la traccia corrente (bordo blu)</dd>
+          <dt>U</dt><dd>UNDO / REDO della traccia corrente</dd>
+          <dt>M</dt><dd>metronomo sì / no</dd>
+        </dl>
+        <span class="small muted">Su iPad funzionano con una tastiera Bluetooth o con una pedaliera «voltapagina», che manda frecce o PagSu/PagGiù. Su Mac la barra spaziatrice avvia e ferma tutto.</span>
+      </details>
       <div class="lp-g lpmetro" aria-label="Metronomo del looper">
         <span class="small muted">Metronomo</span>
         <button class="btn" id="lmOn" aria-pressed="false">♩ Avvia il metronomo</button>
@@ -2134,8 +2152,8 @@ document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey)return
 document.addEventListener('pointerdown',()=>document.body.classList.remove('kb'));
 })();
 </script>
-<script src="looper.js"></script>
-<script src="looper-metro.js"></script>
+<script src="looper.js?b=20261116205411"></script>
+<script src="looper-metro.js?b=20261116205411"></script>
 
 <script>
 /* ---------- base da YouTube (quadrante 2) ---------- */

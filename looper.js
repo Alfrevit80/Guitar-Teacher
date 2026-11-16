@@ -76,7 +76,7 @@ function buildTracks(){const box=$('lpTracks');box.innerHTML=Array.from({length:
 
 let hold=null,holdEl=null;
 function endHold(){if(hold){clearTimeout(hold);hold=null}if(holdEl){holdEl.classList.remove('hold');holdEl=null}}
-function trackAct(el,a,evT){const i=+el.closest('.lp-tr').dataset.t;
+function trackAct(el,a,evT){const i=+el.closest('.lp-tr').dataset.t;setCur(i);
   if(undoMode){const m={press:'undo',stop:'markback',track:'markset',fx:'markclear'}[a];if(m)act(m,i,evT);return}
   if(a==='press')act('press',i,evT);
   else if(a==='stop'){act('stop',i,evT);endHold();holdEl=el;el.classList.add('hold');
@@ -91,6 +91,35 @@ $('lpTracks').addEventListener('input',e=>{const r=e.target,p=r.dataset.p;if(!p)
   if(p==='pan'){S.tr[i].pan=v;r.nextElementSibling.textContent=panTxt(v);post({t:'pan',tr:i,v:v/50})}
   saveTr()});
 $('lpTracks').addEventListener('change',e=>{const r=e.target;if(r.dataset.p!=='dub')return;const i=+r.closest('.lp-tr').dataset.t;S.tr[i].dub=r.value;post({t:'dubMode',tr:i,v:r.value});saveTr()});
+
+/* ---------- traccia corrente, tastiera e pedaliere Bluetooth ----------
+   Su iPad Safari non ha Web MIDI: le pedaliere BT "voltapagina" si comportano come tastiere
+   (frecce, PagSu/PagGiù, Invio, spazio). La mappatura completa e modificabile arriva in F4. */
+let curT=0;
+function setCur(i){curT=Math.max(0,Math.min(NT-1,i))}
+const stopEl=i=>document.querySelector(`.lp-tr[data-t="${i}"] .lp-stop`);
+function keyAct(k,evT){
+  if(k==='all')return act('all',0,evT);
+  if(k==='metro'){const m=QC.looperMetro;if(m)m.on?m.stop():m.start();return}
+  if(k==='prev'||k==='next'){setCur(curT+(k==='next'?1:-1));say('Traccia corrente: '+(curT+1));return}
+  if(k==='undo')return act('undo',curT,evT);
+  const [a,n]=k.split(':'),i=n==null?curT:+n;if(i>=NT)return;setCur(i);
+  const el=a==='press'?document.querySelector(`.lp-tr[data-t="${i}"] .lp-rp`):stopEl(i);if(el)trackAct(el,a,evT)}
+function keyFn(e){const c=e.code,k=e.key;
+  if(c==='Space')return 'all';
+  if(/^Digit[1-4]$/.test(c))return 'press:'+(+c.slice(5)-1);
+  const st={KeyQ:0,KeyW:1,KeyE:2,KeyR:3}[c];if(st!=null)return 'stop:'+st;
+  if(k==='ArrowRight'||k==='PageDown'||k==='Enter')return 'press';
+  if(k==='ArrowLeft'||k==='PageUp')return 'stop';
+  if(k==='ArrowDown')return 'next';if(k==='ArrowUp')return 'prev';
+  if(c==='KeyU')return 'undo';if(c==='KeyM')return 'metro';
+  return null}
+const typing=t=>t&&(t.tagName==='INPUT'&&t.type!=='range'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+const lpKeys=()=>!$('pageLooper').hidden&&$('lpCal').hidden;
+addEventListener('keydown',e=>{if(!lpKeys()||e.metaKey||e.ctrlKey||e.altKey||typing(e.target))return;const k=keyFn(e);if(!k)return;
+  e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return;keyAct(k,e.timeStamp)},true);
+addEventListener('keyup',e=>{if(!lpKeys()||typing(e.target))return;const k=keyFn(e);if(!k)return;e.preventDefault();e.stopImmediatePropagation();
+  if(k.startsWith('stop'))endHold()},true);
 
 /* ---------- comandi globali ---------- */
 $('lpAll').addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();act('all',0,e.timeStamp)});
@@ -144,7 +173,7 @@ function draw(){requestAnimationFrame(draw);if(!last||!ac)return;
   const sr=ac.sampleRate,hn=(ac.currentTime-(ac.outputLatency||0))*sr;
   const iv=$('lpInVu');iv.style.width=dbW(last.inPeak)+'%';iv.className=last.inPeak>0.9?'hot':last.inPeak>0.01?'ok':'';
   document.querySelectorAll('.lp-tr').forEach(el=>{const i=+el.dataset.t,s=last.tr[i];if(!s)return;
-    const cls='lp-tr st-'+s.st+(undoMode?' um':'');if(el.className!==cls)el.className=cls;
+    const cls='lp-tr st-'+s.st+(undoMode?' um':'')+(i===curT&&NT>1?' cur':'');if(el.className!==cls)el.className=cls;
     el.querySelector('.lp-st').textContent=ST_IT[s.st];
     const rp=el.querySelector('.lp-rp');let lab;
     if(undoMode){lab=s.undo?'UNDO':s.redo?'REDO':'—';rp.dataset.u=s.undo?'u':s.redo?'r':''}
