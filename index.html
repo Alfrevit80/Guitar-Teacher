@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261120185321">
+<meta name="qc-build" content="20261120193136">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -179,6 +179,8 @@ svg.fb,#fb,#pfb,#exfb{filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
   .q,.lside,.lmain{border-radius:14px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* chat del maestro nascosta: tornerà come pagina a parte */
+#chat[hidden]{display:none!important}
 </style>
 <title>Quadranti Chitarra</title>
 </head>
@@ -898,7 +900,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   <div class="exmsg" id="lpMsg" aria-live="polite"></div>
 </div>
 
-<div class="chat" id="chat">
+<div class="chat" id="chat" hidden>
   <div class="chatlog" id="chatLog" hidden aria-live="polite"><div class="chead" id="chatHead"><span class="grip" id="chatGrip" title="Trascina per ridimensionare" aria-hidden="true"></span><span class="small muted">Trascina per ridimensionare</span><span class="sp"></span><button type="button" class="btn small" id="chatClose" aria-label="Chiudi la conversazione">Chiudi ✕</button></div></div>
   <form class="chatbar" id="chatForm">
     <span class="who">Maestro</span>
@@ -2257,7 +2259,7 @@ document.addEventListener('pointerdown',e=>{if(!log.hidden&&!e.target.closest('#
   g.addEventListener('pointermove',e=>{if(!drag)return;const h=Math.max(90,Math.min(innerHeight*0.85,h0+(y0-e.clientY)));log.style.height=h+'px';log.style.maxHeight='none'});
   const end=()=>{if(!drag)return;drag=false;ls.set('chath',Math.round(log.getBoundingClientRect().height))};g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end)})();
 inp.addEventListener('keydown',e=>{if(e.key==='Escape'){log.hidden=true;$('chatToggle').textContent='▴';inp.blur()}});
-document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();inp.focus()}});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!document.getElementById('chat').hidden&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){e.preventDefault();inp.focus()}});
 })();
 </script>
 <script>
