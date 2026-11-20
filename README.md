@@ -7,3 +7,7 @@ Si apre da GitHub Pages; su iPhone e iPad si aggiunge alla schermata Home da Saf
 ## Crediti
 
 Suoni di chitarra acustica, chitarra elettrica e basso: FluidR3 GM soundfont di Frank Wen, rilasciato con licenza [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/), nella conversione MP3 di [gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts). I file `suoni-*.js` contengono solo le note che usa l’app.
+
+## Canzoni
+
+Pagina 4: scrivi titolo e artista, il maestro (Gemini con ricerca Google, stessa chiave della chat) trova gli accordi. Puoi vederli originali o semplificati; l'app calcola se conviene il capotasto e su che tasto. Codice in `canzoni.js`.

@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261120193136">
+<meta name="qc-build" content="20261120195902">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -179,6 +179,58 @@ svg.fb,#fb,#pfb,#exfb{filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
   .q,.lside,.lmain{border-radius:14px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ================= CANZONI ================= */
+.sgpage{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;min-height:0}
+.sg-top,.sg-out{border:1px solid color-mix(in srgb,var(--green) 26%,var(--line));border-radius:var(--r);padding:14px 16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 120px),var(--panel);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -22px rgba(0,0,0,.8)}
+.sg-top{display:flex;flex-direction:column;gap:10px;flex:none}
+.sg-out{flex:1 1 auto;min-height:0;overflow:auto;border-color:color-mix(in srgb,var(--blue) 26%,var(--line))}
+.sg-out:empty{display:none}
+.sg-empty{max-width:720px}.sg-empty p,.sg-empty li{line-height:1.6;font-size:calc(15px * var(--fs))}.sg-empty ul{padding-left:18px;margin:10px 0}.sg-empty li{margin:4px 0}.sg-empty b{color:var(--green);font-weight:500}
+.sg-out.sg-in>*{animation:fadeUp .4s var(--ease) both}
+.sg-out.sg-in>*:nth-child(2){animation-delay:.05s}.sg-out.sg-in>*:nth-child(3){animation-delay:.1s}.sg-out.sg-in>*:nth-child(n+4){animation-delay:.15s}
+.sg-lbl{font-size:calc(11px * var(--fs));letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+.sg-form{display:flex;gap:8px}
+.sg-form input{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:calc(16px * var(--fs));color:var(--fg);outline:none;transition:border-color .2s,box-shadow .2s}
+.sg-form input:focus{border-color:color-mix(in srgb,var(--green) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 14%,transparent)}
+.sg-recent{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.sg-recent:empty{display:none}
+.sg-recent .muted{margin-right:4px}
+.sg-stat{font-size:calc(14px * var(--fs));color:var(--muted)}.sg-stat:empty{display:none}
+.sg-stat.err{color:var(--red)}.sg-stat a{color:var(--blue)}
+.sg-key{display:flex;gap:8px;margin-top:8px}.sg-key input{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--fg)}
+.sg-spin{display:inline-block;width:12px;height:12px;border:2px solid color-mix(in srgb,var(--green) 30%,transparent);border-top-color:var(--green);border-radius:50%;animation:sgSpin .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sgSpin{to{transform:rotate(360deg)}}
+.sg-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.sg-title{margin:0;font-size:calc(26px * var(--fs));font-weight:500;letter-spacing:.01em}
+.sg-meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:calc(14px * var(--fs))}.sg-meta b{color:var(--fg);font-weight:500}
+.sg-capo{display:flex;gap:18px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:12px;background:rgba(255,255,255,.015)}
+.sg-capo.yes{border-color:color-mix(in srgb,var(--green) 55%,var(--line));background:color-mix(in srgb,var(--green) 6%,transparent);box-shadow:0 0 24px -12px var(--glow-g)}
+.sg-capo p{margin:0;flex:1 1 280px;font-size:calc(14px * var(--fs));line-height:1.5}
+.sg-capo .small{flex-basis:100%}
+.sg-capo-v{font-size:calc(22px * var(--fs));color:var(--green);white-space:nowrap}
+.sg-capo:not(.yes) .sg-capo-v{color:var(--fg)}
+.sg-ctrl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.sg-cap{display:flex;gap:8px;align-items:center}.sg-cap b{min-width:34px;text-align:center;font-weight:500;color:var(--green)}
+.sg-hint{margin:4px 0 8px}
+.sg-strum{margin:6px 0 10px;font-size:calc(14px * var(--fs))}.sg-strum .sg-lbl{margin-right:8px}
+.sg-chords{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 16px}
+.sg-ch{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:12px;padding:8px 8px 4px;cursor:pointer;color:var(--fg);transition:transform .2s var(--ease),border-color .2s,box-shadow .2s}
+.sg-ch:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--green) 45%,var(--line));box-shadow:0 10px 24px -14px var(--glow-g)}
+.sg-ch:active{transform:scale(.97)}
+.sg-chn{font-size:calc(17px * var(--fs))}.sg-chs{font-size:calc(11px * var(--fs));color:var(--muted);max-width:110px;text-align:center}
+.sg-secs{display:flex;flex-direction:column;gap:14px}
+.sg-sech{display:flex;gap:10px;align-items:center;margin-bottom:6px}.sg-sech b{font-weight:500;color:var(--blue);letter-spacing:.04em}
+.sg-sech .sg-play{margin-left:auto}.sg-play.on{border-color:var(--green);color:var(--green)}
+.sg-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sg-bar{display:flex;gap:10px;justify-content:center;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,.25);font-size:calc(17px * var(--fs));transition:border-color .15s,background-color .15s,box-shadow .15s}
+.sg-bar.cur{border-color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent);box-shadow:0 0 16px -6px var(--glow-g)}
+.sg-c{cursor:pointer;padding:2px 4px;border-radius:4px}.sg-c:hover{color:var(--green)}
+.sg-notes{margin:16px 0 6px;font-size:calc(14px * var(--fs));line-height:1.5}
+.sg-src{margin-top:10px}.sg-src a{color:var(--blue)}
+#pageSong:not([hidden])>*{animation:pageIn .4s var(--ease) both}#pageSong:not([hidden])>*:nth-child(2){animation-delay:.06s}
+@media (max-width:860px){.sg-chords{gap:8px}.sg-ch svg{width:84px}.sgpage{min-height:auto}.sg-out{overflow:visible}.sg-bars{grid-template-columns:repeat(2,minmax(0,1fr))}.sg-form{flex-direction:column}}
+@media (prefers-reduced-motion:reduce){.sg-out.sg-in>*,#pageSong>*{animation:none!important}}
 /* chat del maestro nascosta: tornerà come pagina a parte */
 #chat[hidden]{display:none!important}
 </style>
@@ -636,6 +688,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   <a href="#lezione" id="tab1" class="on"><span class="qn">1</span>Lezione</a>
   <a href="#strumenti" id="tab2"><span class="qn">2</span>Strumenti</a>
   <a href="#looper" id="tab3"><span class="qn">3</span>Looper <span class="lp-dot" id="lpDot" aria-hidden="true"></span></a>
+  <a href="#canzoni" id="tab4"><span class="qn">4</span>Canzoni</a>
   <span class="sp"></span>
   <div class="fsz" role="group" aria-label="Dimensione del testo"><span class="small muted">Testo</span><button class="btn small" id="fsDown" aria-label="Testo più piccolo">A−</button><button class="btn small" id="fsUp" aria-label="Testo più grande">A+</button></div>
 </nav>
@@ -832,6 +885,15 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
   </section>
 </div>
 
+<div class="sgpage" id="pageSong" hidden>
+  <section class="sg-top" aria-label="Cerca una canzone">
+    <div class="sg-lbl">Canzoni · il maestro trova gli accordi</div>
+    <form id="sgForm" class="sg-form" autocomplete="off"><input id="sgQ" type="search" placeholder="Titolo e artista, per esempio: Wonderwall Oasis" aria-label="Titolo e artista"><button class="btn big" id="sgGo">Cerca gli accordi</button></form>
+    <div class="sg-recent" id="sgRecent"></div>
+    <div class="sg-stat" id="sgStat" aria-live="polite"></div>
+  </section>
+  <section class="sg-out" id="sgOut" aria-label="Accordi della canzone"></section>
+</div>
 <div class="lpage" id="pageLooper" hidden>
   <section class="lp-top" aria-label="Ingresso del looper">
     <div class="qh"><span class="qn">3</span><span class="qt">Looper</span><span class="sp"></span></div>
@@ -2154,9 +2216,11 @@ $('pHome').onclick=()=>{stopAll();cur=null;if(TEST&&TEST.active){TEST=null}view(
 document.addEventListener('qc-mic',()=>{if(cur&&!run)msgIdle()});
 
 /* ---------- pagine ---------- */
-function route(){const h=location.hash;const tools=h==='#strumenti'||h==='#studio',loop=h==='#looper',les=!tools&&!loop;
-  $('page1').hidden=!tools;$('pageL').hidden=!les;$('pageLooper').hidden=!loop;
-  [['tab1',les],['tab2',tools],['tab3',loop]].forEach(([id,on])=>{$(id).classList.toggle('on',on);$(id).setAttribute('aria-current',on?'page':'false')});
+function route(){const h=location.hash;const tools=h==='#strumenti'||h==='#studio',loop=h==='#looper',song=h==='#canzoni',les=!tools&&!loop&&!song;
+  $('page1').hidden=!tools;$('pageL').hidden=!les;$('pageLooper').hidden=!loop;$('pageSong').hidden=!song;
+  if(window.QCsongs){if(song)QCsongs.open();else QCsongs.close()}
+  if(song){stopAll();return [['tab1',0],['tab2',0],['tab3',0],['tab4',1]].forEach(([id,on])=>{$(id).classList.toggle('on',!!on);$(id).setAttribute('aria-current',on?'page':'false')})}
+  [['tab1',les],['tab2',tools],['tab3',loop],['tab4',false]].forEach(([id,on])=>{$(id).classList.toggle('on',on);$(id).setAttribute('aria-current',on?'page':'false')});
   if(tools){stopAll();QC.redraw()}else if(loop){stopAll();document.dispatchEvent(new Event('qc-looper-open'))}else renderSide()}
 addEventListener('hashchange',route);
 
@@ -2285,6 +2349,7 @@ document.addEventListener('pointerdown',()=>document.body.classList.remove('kb')
 })();
 </script>
 <script src="looper.js?b=20261116205411"></script>
+<script src="canzoni.js?b=20261120195902"></script>
 <script src="looper-metro.js?b=20261116205411"></script>
 
 <script>
