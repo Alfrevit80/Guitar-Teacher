@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261116205411">
+<meta name="qc-build" content="20261120185321">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -49,6 +49,136 @@
 .lmdots span.first{border-color:var(--blue)}
 .lmdots span.lit{background:var(--green)}.lmdots span.first.lit{background:var(--blue)}
 #lmRec.rec{border-color:var(--red);color:var(--red)}
+
+/* ================= RIFINITURA ESTETICA =================
+   Stessa identità (nero, contorni verdi e blu), più profondità, ritmo e movimento. */
+:root{--panel2:#0a1013;--glow-g:color-mix(in srgb,var(--green) 35%,transparent);--glow-b:color-mix(in srgb,var(--blue) 35%,transparent);--r:12px;--ease:cubic-bezier(.2,.7,.2,1)}
+html{background:var(--bg)}
+body{background:
+  radial-gradient(1200px 700px at 8% -10%,color-mix(in srgb,var(--blue) 9%,transparent),transparent 60%),
+  radial-gradient(1000px 650px at 105% 110%,color-mix(in srgb,var(--green) 8%,transparent),transparent 60%),
+  var(--bg);background-attachment:fixed}
+::selection{background:color-mix(in srgb,var(--green) 35%,transparent)}
+*{scrollbar-width:thin;scrollbar-color:#22343a transparent}
+*::-webkit-scrollbar{width:8px;height:8px}*::-webkit-scrollbar-thumb{background:#1c2b30;border-radius:8px}*::-webkit-scrollbar-track{background:transparent}
+
+/* superfici */
+.q,.lside,.lmain,.exlist,.exmain,.lp-top,.lp-tracks,.lp-side,.lp-cal{
+  border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 120px),var(--panel);
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -22px rgba(0,0,0,.8);
+  transition:border-color .25s var(--ease),box-shadow .25s var(--ease)}
+.q:hover,.lp-tracks:hover{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 22px 48px -22px rgba(0,0,0,.9)}
+.q:nth-child(1):hover,.q:nth-child(4):hover{border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.q:nth-child(2):hover,.q:nth-child(3):hover{border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
+.qh{min-height:28px}
+.qn{background:rgba(255,255,255,.02);transition:border-color .2s,color .2s}
+.q:hover .qn{border-color:color-mix(in srgb,var(--green) 50%,var(--line));color:var(--fg)}
+
+/* navigazione */
+.tabs{position:relative;padding:4px;border:1px solid var(--line);border-radius:999px;background:rgba(7,11,13,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-self:flex-start;max-width:100%}
+.tabs .sp{display:none}
+.tabs a{position:relative;z-index:1;border-radius:999px;padding:7px 14px 7px 8px;border:0;transition:color .25s var(--ease)}
+.tabs a.on{color:var(--fg);border:0}
+.tabs a:hover{color:var(--fg)}
+.tabs .tabpill{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:color-mix(in srgb,var(--green) 12%,transparent);border:1px solid color-mix(in srgb,var(--green) 45%,transparent);box-shadow:0 0 18px -6px var(--glow-g);transition:left .35s var(--ease),width .35s var(--ease),top .35s var(--ease)}
+.tabs .fsz{margin-left:8px;padding-left:8px;border-left:1px solid var(--line)}
+.tabs .fsz .btn{border-radius:999px}
+body>nav.tabs{display:flex;align-items:center;gap:2px}
+
+/* pulsanti */
+.btn{border-radius:8px;transition:border-color .18s,color .18s,background-color .18s,transform .12s var(--ease),box-shadow .18s}
+.btn:hover{border-color:color-mix(in srgb,var(--green) 55%,var(--line));background:rgba(255,255,255,.025)}
+.btn:active{transform:scale(.97)}
+.btn.on{background:color-mix(in srgb,var(--green) 10%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 25%,transparent) inset}
+.btn.big{border-radius:10px}
+.btn.big.on{background:linear-gradient(180deg,color-mix(in srgb,var(--green) 22%,transparent),color-mix(in srgb,var(--green) 10%,transparent));box-shadow:0 8px 24px -12px var(--glow-g),0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent) inset}
+.btn.big.on:hover{box-shadow:0 10px 28px -10px var(--glow-g),0 0 0 1px color-mix(in srgb,var(--green) 45%,transparent) inset}
+.btn.round{border-radius:50%}
+.btn:disabled{transform:none}
+select{border-radius:8px;transition:border-color .18s}
+select:hover{border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
+input[type=range]{accent-color:var(--green);cursor:pointer}
+
+/* metronomo */
+.bpm{text-shadow:0 0 28px color-mix(in srgb,var(--green) 30%,transparent);transition:transform .08s}
+.dot{transition:background .06s,box-shadow .2s,transform .12s var(--ease)}
+.dot.lit{transform:scale(1.28)}
+.dots{padding:6px 0}
+
+/* circolo delle quinte */
+.seg path{transition:fill .2s var(--ease),stroke .2s}
+.seg:hover path{fill:color-mix(in srgb,var(--blue) 16%,transparent)}
+.seg.sel path{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--blue) 60%,transparent))}
+#circle{filter:drop-shadow(0 10px 30px rgba(0,0,0,.4))}
+
+/* manico */
+svg.fb,#fb,#pfb,#exfb{filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
+.nd circle{transition:fill .15s,stroke .15s}
+.nd.root circle{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--blue) 70%,transparent))}
+.nd.cur circle{animation:ndPulse 1s var(--ease) infinite}
+@keyframes ndPulse{0%,100%{stroke-width:2.6}50%{stroke-width:4.2}}
+.nd.hit circle{filter:drop-shadow(0 0 7px #fff)}
+
+/* nota e accordatore */
+.note{text-shadow:0 0 40px color-mix(in srgb,var(--fg) 18%,transparent);transition:color .2s}
+.gneedle.ok line{filter:drop-shadow(0 0 4px var(--green))}
+.tstate.ok{text-shadow:0 0 18px var(--glow-g)}
+
+/* lezione */
+.pitem{border-radius:10px;transition:border-color .18s,background .18s,transform .18s var(--ease)}
+.pitem:hover{transform:translateX(2px);background:rgba(255,255,255,.02)}
+.pitem.on{box-shadow:0 0 0 1px color-mix(in srgb,var(--blue) 25%,transparent) inset}
+.ck{transition:border-color .2s,color .2s,background .2s}
+.ck.g{background:color-mix(in srgb,var(--green) 10%,transparent)}
+.chordbox{border-radius:12px;transition:border-color .15s,box-shadow .15s,transform .15s var(--ease)}
+.chordbox.on{transform:translateY(-2px);box-shadow:0 0 0 1px var(--green) inset,0 10px 26px -14px var(--glow-g)}
+.sl{border-radius:8px;transition:background .08s,border-color .08s,transform .08s}
+.sl.cur{transform:translateY(-2px)}
+.bar{border-radius:6px;transition:border-color .15s,color .15s}
+.seq .chip{border-radius:6px}
+.report{border-top:0;margin-top:4px;padding:16px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.015)}
+.score{text-shadow:0 0 30px currentColor}
+.testcard{border-radius:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--blue) 10%,transparent),transparent 60%)}
+.method li{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.015)}
+.wd b{transition:background .2s,transform .2s}
+.wd.on b{box-shadow:0 0 10px -2px var(--glow-g)}
+.clock .mono{text-shadow:0 0 24px var(--glow-g)}
+.tbar span{background:linear-gradient(90deg,var(--blue),var(--green));transition:width 1s linear}
+
+/* chat */
+.chatbar{border-radius:14px;background:rgba(7,11,13,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:border-color .2s,box-shadow .2s}
+.chatbar:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 15%,transparent)}
+.chatlog{border-radius:14px;background:rgba(7,11,13,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.chatlog:not([hidden]){animation:popUp .28s var(--ease)}
+.cm.a,.cm.u{animation:fadeUp .3s var(--ease)}
+
+/* base YouTube e looper */
+.ytvideo{border-radius:10px}
+.lp-tr{border-radius:12px;background:rgba(255,255,255,.012);transition:border-color .2s,box-shadow .2s}
+.st-rec.lp-tr{box-shadow:0 0 30px -12px var(--red)}.st-play.lp-tr{box-shadow:0 0 30px -14px var(--green)}.st-dub.lp-tr{box-shadow:0 0 30px -12px var(--yellow)}
+.newver{border-radius:14px;animation:popUp .35s var(--ease)}
+
+/* ingressi di pagina e di vista */
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes popUp{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+#page1:not([hidden]) .q{animation:pageIn .45s var(--ease) both}
+#page1:not([hidden]) .q:nth-child(2){animation-delay:.05s}#page1:not([hidden]) .q:nth-child(3){animation-delay:.1s}#page1:not([hidden]) .q:nth-child(4){animation-delay:.15s}
+#pageL:not([hidden]) .lside{animation:pageIn .4s var(--ease) both}
+#pageL:not([hidden]) .lmain{animation:pageIn .4s .06s var(--ease) both}
+#pageLooper:not([hidden])>*{animation:pageIn .4s var(--ease) both}
+#pageLooper:not([hidden])>*:nth-child(2){animation-delay:.06s}
+#pWelcome:not([hidden]),#pv:not([hidden]),#pSum:not([hidden]),#pTest:not([hidden]),#pTres:not([hidden]),#pCal:not([hidden]){animation:fadeUp .35s var(--ease)}
+.report:not([hidden]){animation:popUp .4s var(--ease)}
+#tunerPanel:not([hidden]),#notePanel:not([hidden]),#ytSide:not([hidden]){animation:fadeUp .3s var(--ease)}
+.sidebox:not([hidden]){animation:fadeUp .25s var(--ease)}
+
+@media (max-width:860px){
+  .tabs{border-radius:16px;align-self:stretch}
+  .q,.lside,.lmain{border-radius:14px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 <title>Quadranti Chitarra</title>
 </head>
@@ -2240,6 +2370,18 @@ view(ls.get('cview','scala')==='base');
   bar.querySelector('button').onclick=()=>{const u=new URL(location.href);u.searchParams.set('v',Date.now());location.replace(u.toString())};
   async function check(){try{const r=await fetch(location.pathname+'?nc='+Date.now(),{cache:'no-store'});const t=await r.text();const m=t.match(/name="qc-build" content="(\d+)"/);if(m&&m[1]!==mine&&m[1]>mine)bar.hidden=false}catch(e){}}
   setTimeout(check,3000);setInterval(check,5*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()})})();
+</script>
+<script>
+/* rifinitura: indicatore che scorre sotto la pagina attiva e voto che conta fino al risultato */
+(function(){const nav=document.querySelector('nav.tabs');if(!nav)return;const pill=document.createElement('span');pill.className='tabpill';nav.prepend(pill);
+  const place=()=>{const a=nav.querySelector('a.on');if(!a)return;pill.style.left=a.offsetLeft+'px';pill.style.width=a.offsetWidth+'px';pill.style.top=a.offsetTop+'px';pill.style.height=a.offsetHeight+'px';pill.style.bottom='auto'};
+  new MutationObserver(place).observe(nav,{subtree:true,attributes:true,attributeFilter:['class']});addEventListener('resize',place);
+  (document.fonts&&document.fonts.ready||Promise.resolve()).then(place);setTimeout(place,300);place();
+  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sc=document.getElementById('pScore');if(sc&&!rm){let busy=false;new MutationObserver(()=>{if(busy)return;const m=sc.textContent.match(/^(\d+)/);if(!m)return;const to=+m[1];busy=true;
+    const small=sc.querySelector('small');const tail=small?small.outerHTML:'';const t0=performance.now(),D=700;
+    const f=now=>{const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);sc.innerHTML=Math.round(to*e)+tail;if(k<1)requestAnimationFrame(f);else setTimeout(()=>busy=false,0)};requestAnimationFrame(f)}).observe(sc,{childList:true,characterData:true,subtree:true})}
+})();
 </script>
 </body>
 </html>
