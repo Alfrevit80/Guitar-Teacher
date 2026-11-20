@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="qc-build" content="20261120201619">
+<meta name="qc-build" content="20261120203514">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -194,6 +194,7 @@ svg.fb,#fb,#pfb,#exfb{filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
 .sg-form{display:flex;gap:8px}
 .sg-form input{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:calc(16px * var(--fs));color:var(--fg);outline:none;transition:border-color .2s,box-shadow .2s}
 .sg-form input:focus{border-color:color-mix(in srgb,var(--green) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 14%,transparent)}
+.sg-model{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.sg-model select{max-width:100%;background:rgba(0,0,0,.35);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:calc(13px * var(--fs))}
 .sg-recent{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.sg-recent:empty{display:none}
 .sg-recent .muted{margin-right:4px}
 .sg-stat{font-size:calc(14px * var(--fs));color:var(--muted)}.sg-stat:empty{display:none}
@@ -890,6 +891,7 @@ body.kb .btn:focus,body.kb .pitem:focus,body.kb summary:focus,body.kb .tabs a:fo
     <div class="sg-lbl">Canzoni · il maestro trova gli accordi</div>
     <form id="sgForm" class="sg-form" autocomplete="off"><input id="sgQ" type="search" placeholder="Titolo e artista, per esempio: Wonderwall Oasis" aria-label="Titolo e artista"><button class="btn big" id="sgGo">Cerca gli accordi</button></form>
     <div class="sg-recent" id="sgRecent"></div>
+    <div class="sg-model"><label for="sgModel" class="muted small">Modello</label><select id="sgModel"></select><span class="muted small" id="sgModelNote"></span></div>
     <div class="sg-stat" id="sgStat" aria-live="polite"></div>
   </section>
   <section class="sg-out" id="sgOut" aria-label="Accordi della canzone"></section>
@@ -2349,7 +2351,7 @@ document.addEventListener('pointerdown',()=>document.body.classList.remove('kb')
 })();
 </script>
 <script src="looper.js?b=20261116205411"></script>
-<script src="canzoni.js?b=20261120201619"></script>
+<script src="canzoni.js?b=20261120203514"></script>
 <script src="looper-metro.js?b=20261116205411"></script>
 
 <script>

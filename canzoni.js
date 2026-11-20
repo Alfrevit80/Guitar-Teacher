@@ -183,7 +183,7 @@ async function liveModels(key){const c=ls.get('gemmodels',null);if(c&&Date.now()
     const j=await r.json();const v=n=>{const m=n.match(/gemini-(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):0};
     const list=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,''))
       .filter(n=>/^gemini-.*flash/.test(n)&&!/tts|image|live|audio|embed|vision|thinking|exp|computer|robot|native/.test(n))
-      .sort((a,b)=>(/lite/.test(a)-/lite/.test(b))||(/preview/.test(a)-/preview/.test(b))||(v(b)-v(a))||(/latest/.test(b)-/latest/.test(a))).slice(0,6);
+      .sort((a,b)=>(/lite/.test(a)-/lite/.test(b))||(/preview/.test(a)-/preview/.test(b))||(v(b)-v(a))||(/latest/.test(b)-/latest/.test(a))).slice(0,12);
     if(list.length)ls.set('gemmodels',{t:Date.now(),list});return list}catch(e){return []}}
 const PROMPT=q=>`Cerca in rete gli accordi per chitarra della canzone: «${q}».
 Usa più fonti affidabili (Ultimate Guitar, Songsterr, siti di accordi, libri di canzoni) e confrontale: scegli la versione più fedele al disco originale.
@@ -216,9 +216,10 @@ async function search(q){
   const st=$('sgStat');st.className='sg-stat';st.innerHTML='<span class="sg-spin"></span> Il maestro sta cercando gli accordi in rete… (fino a mezzo minuto)';
   $('sgGo').disabled=true;busy=new AbortController();const to=setTimeout(()=>busy&&busy.abort(),70000);
   const live=await liveModels(key);
-  const order=[...new Set([ls.get('songmodel','')].concat(live,MODELS))].filter(Boolean);
+  const fix=ls.get('songmodelfix','');
+  const order=fix?[fix]:[...new Set([ls.get('songmodel','')].concat(live,MODELS))].filter(Boolean);
   let last;const errs=[];
-  const tries=order.map(m=>[m,false]).concat(order.slice(0,3).map(m=>[m,true]));
+  const tries=order.map(m=>[m,false]).concat(order.slice(0,3).map(m=>[m,true]));fillModels();
   try{for(const [m,ns] of tries){if(ns&&errs.some(e=>e.status===401||e.status===403||e.name==='AbortError'))break;
       try{const d=await gem(key,m,q,busy.signal,ns);if(ns){d.nosearch=true;d.conf='da verificare: trovati senza la ricerca in rete'}
         if(!d.found){st.className='sg-stat err';st.textContent='Non ho trovato questa canzone: '+(d.why||'prova a scrivere titolo e artista.');return}
@@ -232,8 +233,9 @@ async function search(q){
       errs.some(e=>e.status>=500)?'I server di Gemini sono sovraccarichi in questo momento: riprova tra qualche minuto.':
       errs.length&&errs.every(e=>e.status===404||/no longer available|not found|not supported/i.test(e.message))?'Google ha cambiato i modelli di Gemini e nessuno di quelli provati risponde a questa chiave: riprova più tardi.':
       'Non sono riuscito a trovare gli accordi ('+((last&&last.status)||'rete')+'). Riprova tra poco.';
+    if(fix&&!(last&&(last.status===401||last.status===403)))st.textContent+=` Hai scelto il modello ${fix}: prova con “Automatico” o con un altro modello.`;
     try{console.warn('Canzoni: errori Gemini',errs.map(e=>e.status+' '+e.message))}catch(_){}
-    ls.set('gemmodels',null);
+    if(!fix)ls.set('gemmodels',null);
     if(last&&(last.status===401||last.status===403||/API key/i.test(last.message||''))){ls.set('gemkey','');keyForm(q)}}
   finally{clearTimeout(to);busy=null;$('sgGo').disabled=false;recent()}}
 function show(d){SONG=d;CAPO=null;$('sgStat').textContent='';render();recent();const o=$('sgOut');o.scrollTop=0;o.classList.remove('sg-in');void o.offsetWidth;o.classList.add('sg-in')}
@@ -247,10 +249,18 @@ function recent(){const c=ls.get('songs',[]),el=$('sgRecent');
   el.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{show(c[+b.dataset.i].d)});
   const ag=$('sgAgain');if(ag)ag.onclick=()=>{const i=c.findIndex(s=>s.d===SONG);if(i<0)return;const q=c[i].q;c.splice(i,1);ls.set('songs',c);SONG=null;render();search(q)}}
 
+/* menu per scegliere il modello di Gemini */
+function nice(m){const v=m.match(/gemini-(\d+(?:\.\d+)?)/);return 'Gemini '+(v?v[1]+' ':'')+(/flash-lite/.test(m)?'Flash-Lite':/flash/.test(m)?'Flash':/pro/.test(m)?'Pro':'')+(/latest/.test(m)?' (ultima versione)':'')+(/preview/.test(m)?' (anteprima)':'')}
+function fillModels(){const sel=$('sgModel');if(!sel)return;const fix=ls.get('songmodelfix',''),used=ls.get('songmodel','');
+  const live=(ls.get('gemmodels',null)||{}).list||[];const list=[...new Set((live.length?live:MODELS).concat(fix?[fix]:[]))];
+  sel.innerHTML=`<option value="">Automatico${!fix&&used?' (ora: '+esc(nice(used))+')':''}</option>`+list.map(m=>`<option value="${esc(m)}" ${m===fix?'selected':''}>${esc(nice(m))} · ${esc(m)}</option>`).join('');
+  $('sgModelNote').textContent=fix?(/lite/.test(fix)?'Flash-Lite: più veloce e con più richieste gratuite al giorno, a volte meno preciso.':'Flash: più preciso, un po’ più lento e con meno richieste gratuite.'):'L’app prova il modello più recente e, se non risponde, passa al successivo.'}
+async function refreshModels(){const k=ls.get('gemkey','');if(!k)return;const c=ls.get('gemmodels',null);if(!c||Date.now()-c.t>6*3600e3){ls.set('gemmodels',null);await liveModels(k)}fillModels()}
 function init(){const f=$('sgForm');if(!f)return;
+  const sel=$('sgModel');if(sel){sel.addEventListener('change',()=>{ls.set('songmodelfix',sel.value);fillModels()});fillModels();refreshModels()}
   f.addEventListener('submit',e=>{e.preventDefault();search($('sgQ').value)});
   const c=ls.get('songs',[]);if(c.length){SONG=c[0].d}recent();render()}
-window.QCsongs={open(){if(SONG)render();else recent()},close:stopPlay,
+window.QCsongs={open(){if(SONG)render();else recent();refreshModels()},close:stopPlay,
   _test:{parse,family,shapeFor,bestCapo,show,set:d=>show(d)}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
