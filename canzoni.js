@@ -176,7 +176,15 @@ function prettySuf(q){return String(q||'').replace(/b5/g,'♭5').replace(/#/g,'�
 function keyIt(k){const p=parse(String(k).replace(/\s*(major|maggiore)$/i,'').replace(/\s*(minor|minore)$/i,'m'));if(p.nc||p.bad)return k;return rootName(p.pc,/b/.test(p.acc)?'b':p.acc==='#'?'#':'')+(family(p.q)==='m'?' minore':' maggiore')}
 
 /* ---------- ricerca con Gemini ---------- */
-const MODELS=['gemini-flash-latest','gemini-2.5-flash','gemini-2.0-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite'];
+const MODELS=['gemini-3.6-flash','gemini-3.5-flash','gemini-flash-latest','gemini-3.5-flash-lite','gemini-flash-lite-latest','gemini-2.5-flash'];
+/* chiede a Google quali modelli può usare questa chiave, così quando Google ritira un modello l'app non si rompe */
+async function liveModels(key){const c=ls.get('gemmodels',null);if(c&&Date.now()-c.t<6*3600e3&&c.list&&c.list.length)return c.list;
+  try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{headers:{'x-goog-api-key':key}});if(!r.ok)return [];
+    const j=await r.json();const v=n=>{const m=n.match(/gemini-(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):0};
+    const list=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,''))
+      .filter(n=>/^gemini-.*flash/.test(n)&&!/tts|image|live|audio|embed|vision|thinking|exp|computer|robot|native/.test(n))
+      .sort((a,b)=>(/lite/.test(a)-/lite/.test(b))||(/preview/.test(a)-/preview/.test(b))||(v(b)-v(a))||(/latest/.test(b)-/latest/.test(a))).slice(0,6);
+    if(list.length)ls.set('gemmodels',{t:Date.now(),list});return list}catch(e){return []}}
 const PROMPT=q=>`Cerca in rete gli accordi per chitarra della canzone: «${q}».
 Usa più fonti affidabili (Ultimate Guitar, Songsterr, siti di accordi, libri di canzoni) e confrontale: scegli la versione più fedele al disco originale.
 NON scrivere il testo della canzone, nemmeno una riga: servono solo gli accordi.
@@ -188,9 +196,9 @@ Rispondi SOLO con un oggetto JSON (niente altro testo), con questa forma:
 Regole: accordi in notazione inglese (C, Am, F#m, Bb7, Cadd9, D/F#). In "bars" ogni elemento è UNA battuta; se in una battuta ci sono due accordi separali con uno spazio.
 "tab_capo" è il capotasto che usa la versione originale: se le fonti scrivono gli accordi come forme con il capotasto, riporta le forme così come sono scritte e metti il tasto del capotasto in tab_capo; altrimenti 0.
 Elenca le sezioni nell'ordine della canzone, senza ripetere identiche sezioni consecutive (usa repeat). Se non trovi la canzone: {"found":false,"why":"motivo in italiano"}.`;
-async function gem(key,model,q,signal){
+async function gem(key,model,q,signal,noSearch){
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',signal,headers:{'content-type':'application/json','x-goog-api-key':key},
-    body:JSON.stringify({contents:[{role:'user',parts:[{text:PROMPT(q)}]}],tools:[{google_search:{}}],generationConfig:{temperature:0.2,maxOutputTokens:8192}})});
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:PROMPT(q)}]}],...(noSearch?{}:{tools:[{google_search:{}}]}),generationConfig:{maxOutputTokens:16384}})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){const e=new Error((j.error&&j.error.message)||'errore '+r.status);e.status=r.status;throw e}
   const c=j.candidates&&j.candidates[0];const t=c&&c.content&&c.content.parts?c.content.parts.map(p=>p.text||'').join(''):'';
@@ -207,18 +215,25 @@ async function search(q){
   const key=ls.get('gemkey','');if(!key){keyForm(q);return}
   const st=$('sgStat');st.className='sg-stat';st.innerHTML='<span class="sg-spin"></span> Il maestro sta cercando gli accordi in rete… (fino a mezzo minuto)';
   $('sgGo').disabled=true;busy=new AbortController();const to=setTimeout(()=>busy&&busy.abort(),70000);
-  const order=[...new Set([ls.get('gemmodel',MODELS[0])].concat(MODELS))].filter(m=>MODELS.includes(m)).concat(MODELS.filter(m=>m!==ls.get('gemmodel',''))).filter((m,i,a)=>a.indexOf(m)===i);
-  let last;
-  try{for(const m of order){try{const d=await gem(key,m,q,busy.signal);
+  const live=await liveModels(key);
+  const order=[...new Set([ls.get('songmodel','')].concat(live,MODELS))].filter(Boolean);
+  let last;const errs=[];
+  const tries=order.map(m=>[m,false]).concat(order.slice(0,3).map(m=>[m,true]));
+  try{for(const [m,ns] of tries){if(ns&&errs.some(e=>e.status===401||e.status===403||e.name==='AbortError'))break;
+      try{const d=await gem(key,m,q,busy.signal,ns);if(ns){d.nosearch=true;d.conf='da verificare: trovati senza la ricerca in rete'}
         if(!d.found){st.className='sg-stat err';st.textContent='Non ho trovato questa canzone: '+(d.why||'prova a scrivere titolo e artista.');return}
         if(!d.sections||!d.sections.length)throw Object.assign(new Error('nessun accordo'),{status:200});
-        cache.unshift({q,d,t:Date.now()});ls.set('songs',cache.slice(0,25));st.textContent='';show(d);return}
-      catch(e){last=e;if(e.name==='AbortError')break;if(e.status===401||e.status===403||(e.status===400&&/API key/i.test(e.message)))break}}
+        ls.set('songmodel',m);cache.unshift({q,d,t:Date.now()});ls.set('songs',cache.slice(0,25));st.textContent='';show(d);return}
+      catch(e){errs.push(e);last=e;if(e.name==='AbortError')break;if(e.status===401||e.status===403||(e.status===400&&/API key/i.test(e.message)))break}}
     st.className='sg-stat err';
     st.textContent=last&&last.name==='AbortError'?'La ricerca ci ha messo troppo: riprova.':
       last&&(last.status===401||last.status===403||/API key/i.test(last.message))?'La chiave Gemini non è valida: incollane una nuova.':
-      last&&last.status===429?'Hai raggiunto il limite gratuito di Gemini: riprova tra un minuto (o domani se è il limite giornaliero).':
-      'Non sono riuscito a trovare gli accordi: '+((last&&last.message)||'errore')+'. Riprova tra poco.';
+      errs.some(e=>e.status===429)?'Hai raggiunto il limite gratuito di Gemini: riprova tra un minuto (o domani se è il limite giornaliero).':
+      errs.some(e=>e.status>=500)?'I server di Gemini sono sovraccarichi in questo momento: riprova tra qualche minuto.':
+      errs.length&&errs.every(e=>e.status===404||/no longer available|not found|not supported/i.test(e.message))?'Google ha cambiato i modelli di Gemini e nessuno di quelli provati risponde a questa chiave: riprova più tardi.':
+      'Non sono riuscito a trovare gli accordi ('+((last&&last.status)||'rete')+'). Riprova tra poco.';
+    try{console.warn('Canzoni: errori Gemini',errs.map(e=>e.status+' '+e.message))}catch(_){}
+    ls.set('gemmodels',null);
     if(last&&(last.status===401||last.status===403||/API key/i.test(last.message||''))){ls.set('gemkey','');keyForm(q)}}
   finally{clearTimeout(to);busy=null;$('sgGo').disabled=false;recent()}}
 function show(d){SONG=d;CAPO=null;$('sgStat').textContent='';render();recent();const o=$('sgOut');o.scrollTop=0;o.classList.remove('sg-in');void o.offsetWidth;o.classList.add('sg-in')}
